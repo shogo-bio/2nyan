@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<title>アルバムの猫ラベルを編集する</title>
+<style>
+  :root{--cream:#FBF7F0;--deep:#F3EBDD;--ink:#3A3129;--soft:#6E6155;
+    --brown:#8B6B45;--brown-deep:#6B5133;--accent:#C98B4B;--line:#E3D8C6;
+    --green:#527349;--green-bg:#EDF4EA}
+  *,*::before,*::after{box-sizing:border-box}
+  body{margin:0;background:var(--cream);color:var(--ink);
+    font-family:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Yu Gothic",sans-serif;line-height:1.7}
+  header{position:sticky;top:0;z-index:10;background:rgba(251,247,240,.95);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:12px 20px}
+  .bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;max-width:1100px;margin:0 auto}
+  h1{font-size:17px;margin:0;white-space:nowrap}
+  .prog{flex:1;min-width:160px;height:9px;background:var(--deep);border-radius:99px;overflow:hidden}
+  .prog i{display:block;height:100%;background:var(--accent);width:0;transition:.2s}
+  .count{font-size:13px;color:var(--soft);font-weight:700;white-space:nowrap}
+  main{max-width:1100px;margin:0 auto;padding:22px 20px 40px}
+  .stage{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;
+    box-shadow:0 2px 10px rgba(90,70,45,.08)}
+  .shot{display:block;width:100%;max-height:58vh;object-fit:contain;background:#1c1814;border-radius:10px}
+  .meta{display:flex;justify-content:space-between;align-items:center;gap:10px;
+    font-size:13px;color:var(--soft);margin:10px 2px 0;flex-wrap:wrap}
+  .now{font-weight:700;color:var(--brown-deep)}
+  .current{font-size:13px;font-weight:700;margin:8px 2px 0;padding:8px 10px;
+    border-radius:9px;background:var(--green-bg);color:var(--green);border:1px solid #C7D9C1}
+  .current.changed{background:#FFF4DE;color:#815D1B;border-color:#E8CD91}
+  .baseline{font-size:12px;color:var(--soft);margin:4px 4px 0}
+  .btns{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:14px}
+  .btns button{font:inherit;font-size:14px;font-weight:700;padding:12px 6px;border-radius:12px;
+    border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;transition:.12s;line-height:1.35}
+  .btns button:hover{background:var(--deep)}
+  .btns button.sel{background:var(--brown);color:#fff;border-color:var(--brown)}
+  .btns button.special{border-style:dashed}
+  .nav{display:flex;gap:9px;margin-top:11px;flex-wrap:wrap}
+  .nav button{font:inherit;font-size:13px;font-weight:700;padding:9px 16px;border-radius:99px;
+    border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer}
+  .nav button:hover{background:var(--deep)}
+  .nav button:disabled{opacity:.5;cursor:not-allowed;background:#fff}
+  .nav button.primary{flex:2 1 280px;background:var(--brown);color:#fff;border-color:var(--brown);font-size:14px}
+  .nav button.mode.active{background:var(--green-bg);color:var(--green);border-color:#AFC8A8}
+  .jumpbox{display:flex;gap:8px;margin-top:11px;align-items:center;flex-wrap:wrap}
+  .jumpbox label{font-size:13px;color:var(--soft)}
+  .jumpbox input{width:90px;font:inherit;font-size:16px;padding:7px 9px;border:1px solid var(--line);border-radius:9px}
+  .jumpbox button{font:inherit;font-size:13px;font-weight:700;padding:8px 14px;border-radius:99px;
+    border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer}
+  .hint{font-size:12.5px;color:var(--soft);margin:12px 2px 0}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:6px;margin-top:22px}
+  .grid button{padding:0;border:2px solid transparent;border-radius:8px;overflow:hidden;
+    cursor:pointer;background:none;line-height:0;position:relative}
+  .grid img{width:100%;aspect-ratio:1/1;object-fit:cover;display:block}
+  .grid button.done{border-color:var(--accent)}
+  .grid button.changed{border-color:#D29A35;box-shadow:inset 0 0 0 2px #FFF0CD}
+  .grid button.cur{border-color:var(--brown-deep);box-shadow:0 0 0 2px var(--deep)}
+  .grid span{position:absolute;left:2px;bottom:2px;background:rgba(0,0,0,.66);color:#fff;
+    font-size:9.5px;padding:0 4px;border-radius:4px;line-height:1.5}
+  .out{margin-top:26px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px}
+  .out h2{font-size:15px;margin:0 0 8px}
+  .out p{font-size:13px;color:var(--soft);margin:0 0 10px}
+  textarea{width:100%;height:160px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:12px;padding:11px;border:1px solid var(--line);border-radius:10px;
+    background:var(--cream);color:var(--ink);resize:vertical}
+  .warn{background:#FBEDE6;color:#8A4B2E;font-size:12.5px;border:1px solid #E6C3B0;
+    border-radius:10px;padding:10px 13px;margin-top:12px;display:none}
+  .warn.on{display:block}
+  button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+  @media(max-width:600px){
+    header{padding:10px 12px}
+    main{padding:10px 8px 32px}
+    .stage{padding:8px}
+    .shot{height:42vh;height:42svh;max-height:42vh;max-height:42svh}
+    .btns{grid-template-columns:repeat(6,minmax(0,1fr));gap:7px}
+    .btns button{grid-column:span 2;min-height:50px;padding:7px 3px;font-size:13px}
+    .btns button.special{grid-column:span 6}
+    .nav button{min-height:44px;flex:1 1 46%;padding:8px 9px}
+    .nav button.primary{flex-basis:100%}
+    .grid{grid-template-columns:repeat(4,1fr);gap:5px;margin-top:16px}
+    .out{padding:14px;margin-top:20px}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <h1>猫ラベルを編集する</h1>
+    <div class="prog"><i id="progBar"></i></div>
+    <div class="count" id="count">変更 0件 / 178枚</div>
+  </div>
+</header>
+
+<main>
+  <div class="stage">
+    <img class="shot" id="shot" alt="">
+    <div class="meta">
+      <span class="now" id="pos"></span>
+      <span id="queueState"></span>
+    </div>
+    <div class="current" id="cur"></div>
+    <div class="baseline" id="baseline"></div>
+    <div class="btns" id="labelButtons"></div>
+    <div class="nav">
+      <button class="primary" id="confirmNext">この内容で決定して次へ</button>
+      <button id="clear">選択をすべて外す</button>
+    </div>
+    <div class="nav">
+      <button id="prev">← 前へ</button>
+      <button id="next">次へ →</button>
+    </div>
+    <div class="nav">
+      <button class="mode active" id="modeAll">全写真</button>
+      <button class="mode" id="modeOther">「その他の猫ちゃん」を確認</button>
+      <button class="mode" id="modeChanged">変更済みだけ</button>
+    </div>
+    <div class="jumpbox">
+      <label for="jumpNumber">写真番号</label>
+      <input id="jumpNumber" type="number" min="0" max="177" inputmode="numeric" placeholder="0〜177">
+      <button id="jumpTo">番号へ移動</button>
+    </div>
+    <p class="hint">
+      写っている猫ちゃんをすべて選び、最後に「この内容で決定して次へ」を押してください。
+      名前ボタンを押しただけでは次の写真へ移動しません。<br>
+      「その他の猫ちゃん」を確認では、現在「その他の猫ちゃん」になっている写真だけを順番に表示します。
+      ラベルを変更しても、次も同じ確認対象内から表示されます。
+      「くん・ちゃん」は表示名の一部で、性別情報としては扱いません。
+    </p>
+    <div class="warn" id="warn">
+      この端末に途中経過を保存できません。ページを閉じる前に、下の書き出し欄をコピーしてください。
+    </div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="out">
+    <h2>書き出し（このチャットに貼ってください）</h2>
+    <p>途中でも構いません。結果はこの端末のブラウザ内だけに保存され、自動送信されません。</p>
+    <textarea id="out" readonly></textarea>
+    <div class="nav">
+      <button id="copy">コピーする</button>
+      <button id="reset">公開中のラベルに戻す</button>
+    </div>
+  </div>
+</main>
+
+<script>
+var N = 178;
+var KEY = "2nyan-cat-labels-v2";
+var CHECK_KEY = "2nyan-cat-catalog-checked-v2";
+var labels = {};
+var checkedOther = {};
+try{ labels = JSON.parse(localStorage.getItem(KEY) || "{}"); }catch(e){ labels = {}; }
+try{ checkedOther = JSON.parse(localStorage.getItem(CHECK_KEY) || "{}"); }catch(e){ checkedOther = {}; }
+var canSave = true;
+try{ localStorage.setItem(KEY + "-test", "1"); localStorage.removeItem(KEY + "-test"); }
+catch(e){ canSave = false; document.getElementById("warn").className = "warn on"; }
+
+var i = 0;
+var queueMode = "all";
+var pad = function(n){ return ("00" + n).slice(-3); };
+var big = function(n){ return "img/album/f" + pad(n) + ".webp"; };
+var small = function(n){ return "img/album/t" + pad(n) + ".webp"; };
+
+var LABEL_DEFS = [
+  {id:"gou",     name:"剛くん"},
+  {id:"junior",  name:"ジュニア"},
+  {id:"sai",     name:"サイくん"},
+  {id:"en",      name:"エンちゃん"},
+  {id:"suu",     name:"スゥちゃん"},
+  {id:"sakura",  name:"サクラちゃん"},
+  {id:"dai",     name:"ダイくん"},
+  {id:"maru",    name:"まるちゃん"},
+  {id:"chii",    name:"ちぃちゃん"},
+  {id:"gin",     name:"銀ちゃん"},
+  {id:"aya",     name:"彩さん"},
+  {id:"kitty",   name:"キティちゃん"},
+  {id:"hana",    name:"ハナちゃん"},
+  {id:"leaf",    name:"リーフくん"},
+  {id:"kuroshiro", name:"黒白ねこさん"},
+  {id:"other",   name:"その他の猫ちゃん", special:true}
+];
+var NAMES = {};
+var ORDER = {};
+LABEL_DEFS.forEach(function(d, n){ NAMES[d.id] = d.name; ORDER[d.id] = n; });
+
+var CURRENT = [
+  "junior","gou junior","junior","junior","gou","gou","gou junior","junior","gou junior","gou junior",
+  "gou junior","junior","junior","gou","gou","gou junior","junior","junior","gou junior","gou",
+  "gou","junior","junior","gou","gou junior","gou junior","junior","junior","junior","junior",
+  "junior","junior","gou","gou junior","gou","junior","junior","junior","junior","junior",
+  "junior","junior","junior","gou","junior","gou","junior","junior","gou","junior",
+  "junior","gou","gou","junior","gou","gou junior","gou junior","gou","junior","gou",
+  "gou junior","gou junior","gou junior","junior","gou","gou","gou","junior","junior","junior",
+  "gou","gou junior","junior","junior","gou","gou","junior","gou junior","gou","junior",
+  "gou","gou junior","gou","gou junior","gou","gou junior","junior","gou junior","junior","gou",
+  "junior","gou","gou","junior","junior","gou","junior","gou","junior","junior",
+  "junior","junior","gou","junior","gou","gou","gou","gou","gou","gou",
+  "gou","suu maru","gou junior","sai en suu","gou","gou","gou junior","gou junior","junior","junior",
+  "dai","gou junior","gou junior","junior","gou","gou junior","gou junior","gou junior","gou junior","gou",
+  "gou junior","gou junior","junior","kuroshiro","kuroshiro","junior","gou","gou junior","gou junior","gou",
+  "gou junior","gou","junior","maru","gou junior","gou junior","gou","junior","gou junior","gou",
+  "gou junior","gou","junior","aya","junior","junior","junior","gou","kitty","kitty",
+  "junior","hana","leaf","gou","junior","junior","gou junior","gou","gou junior","gou junior",
+  "junior","gou junior","junior","gou junior","gou junior","gou","gou","junior"
+];
+var OTHER_ORDER = [];
+for(var c = 0; c < N; c++){ if(CURRENT[c] === "other") OTHER_ORDER.push(c); }
+
+function parseLabel(v){
+  if(!v) return [];
+  var seen = {};
+  return String(v).trim().split(/\s+/).filter(function(id){
+    if(!Object.prototype.hasOwnProperty.call(ORDER, id) || seen[id]) return false;
+    seen[id] = true;
+    return true;
+  }).sort(function(a,b){ return ORDER[a] - ORDER[b]; });
+}
+function canonicalValue(ids){
+  var list = ids.slice();
+  return list.sort(function(a,b){ return ORDER[a] - ORDER[b]; }).join(" ");
+}
+function displayValue(v){
+  var ids = parseLabel(v);
+  return ids.length ? ids.map(function(id){ return NAMES[id]; }).join("・") : "未設定";
+}
+function isChanged(k){
+  return canonicalValue(parseLabel(labels[k])) !== canonicalValue(parseLabel(CURRENT[k]));
+}
+function changedIndices(){
+  var out = [];
+  for(var k = 0; k < N; k++){ if(isChanged(k)) out.push(k); }
+  return out;
+}
+function seedCurrent(){
+  for(var k = 0; k < N; k++){
+    var v = canonicalValue(parseLabel(labels[k]));
+    labels[k] = v || CURRENT[k];
+  }
+}
+function save(){
+  if(!canSave) return;
+  try{
+    localStorage.setItem(KEY, JSON.stringify(labels));
+    localStorage.setItem(CHECK_KEY, JSON.stringify(checkedOther));
+  }catch(e){}
+}
+seedCurrent();
+save();
+
+function buildLabelButtons(){
+  var box = document.getElementById("labelButtons");
+  LABEL_DEFS.forEach(function(d){
+    var b = document.createElement("button");
+    b.type = "button";
+    b.dataset.v = d.id;
+    b.textContent = d.name;
+    if(d.special) b.classList.add("special");
+    b.addEventListener("click", function(){ toggleLabel(d.id); });
+    box.appendChild(b);
+  });
+}
+buildLabelButtons();
+
+var grid = document.getElementById("grid");
+for(var k = 0; k < N; k++){
+  var b = document.createElement("button");
+  b.dataset.i = k;
+  b.innerHTML = '<img loading="lazy" src="' + small(k) + '" alt=""><span>' + k + '</span>';
+  b.addEventListener("click", function(){ queueMode = "all"; go(+this.dataset.i); });
+  grid.appendChild(b);
+}
+var cells = [].slice.call(grid.children);
+
+function queueList(mode){
+  if(mode === "other") return OTHER_ORDER.slice();
+  if(mode === "changed") return changedIndices();
+  var all = [];
+  for(var k = 0; k < N; k++) all.push(k);
+  return all;
+}
+function moveInQueue(step){
+  var list = queueList(queueMode);
+  if(!list.length) return -1;
+  var p = list.indexOf(i);
+  if(p < 0) p = step > 0 ? -1 : 0;
+  return list[(p + step + list.length) % list.length];
+}
+function nextUncheckedOther(after){
+  var p = OTHER_ORDER.indexOf(after);
+  var start = p >= 0 ? p + 1 : 0;
+  for(var n = 0; n < OTHER_ORDER.length; n++){
+    var k = OTHER_ORDER[(start + n) % OTHER_ORDER.length];
+    if(!checkedOther[k]) return k;
+  }
+  return -1;
+}
+function otherRemaining(){
+  return OTHER_ORDER.filter(function(k){ return !checkedOther[k]; }).length;
+}
+function go(n){
+  i = Math.max(0, Math.min(N - 1, n));
+  paint();
+}
+function toggleLabel(id){
+  var ids = parseLabel(labels[i]);
+  var at = ids.indexOf(id);
+  if(id !== "other" && ids.length === 1 && ids[0] === "other") ids = [];
+  at = ids.indexOf(id);
+  if(at >= 0) ids.splice(at, 1); else ids.push(id);
+  var v = canonicalValue(ids);
+  if(v) labels[i] = v; else delete labels[i];
+  save();
+  paint();
+}
+function confirmNext(){
+  if(!labels[i]){
+    alert("猫ちゃんを選ぶか、「その他の猫ちゃん」を選んでください。");
+    return;
+  }
+  if(queueMode === "other"){
+    checkedOther[i] = 1;
+    save();
+    var r = nextUncheckedOther(i);
+    if(r >= 0){ i = r; paint(); return; }
+    alert("「その他の猫ちゃん」だった写真の確認がすべて終わりました。");
+    paint();
+    return;
+  }
+  if(queueMode === "changed"){
+    var changed = changedIndices();
+    if(changed.length <= 1){ paint(); return; }
+  }
+  var n = moveInQueue(1);
+  if(n >= 0) i = n;
+  paint();
+}
+function paint(){
+  document.getElementById("shot").src = big(i);
+  document.getElementById("pos").textContent = (i + 1) + "枚目 / " + N + "（写真番号 " + i + "・f" + pad(i) + "）";
+  var changed = isChanged(i);
+  var cur = document.getElementById("cur");
+  cur.textContent = "選択中：" + displayValue(labels[i]) + (changed ? "（変更あり）" : "");
+  cur.className = "current" + (changed ? " changed" : "");
+  document.getElementById("baseline").textContent = "公開中：" + displayValue(CURRENT[i]);
+  var ids = parseLabel(labels[i]);
+  [].slice.call(document.querySelectorAll("#labelButtons button")).forEach(function(b){
+    b.classList.toggle("sel", ids.indexOf(b.dataset.v) >= 0);
+  });
+  cells.forEach(function(c, k){
+    c.classList.toggle("done", !!labels[k]);
+    c.classList.toggle("changed", isChanged(k));
+    c.classList.toggle("cur", k === i);
+  });
+  var changes = changedIndices().length;
+  document.getElementById("count").textContent = "変更 " + changes + "件 / " + N + "枚";
+  document.getElementById("progBar").style.width = (changes / N * 100) + "%";
+  var queueText = queueMode === "other" ? "「その他の猫ちゃん」確認中・残り" + otherRemaining() + "件" :
+    (queueMode === "changed" ? "変更済み " + changes + "件" : "全写真");
+  document.getElementById("queueState").textContent = queueText;
+  var otherButton = document.getElementById("modeOther");
+  otherButton.textContent = "「その他の猫ちゃん」を確認（残り" + otherRemaining() + "件）";
+  otherButton.disabled = OTHER_ORDER.length === 0;
+  document.getElementById("modeChanged").textContent = "変更済みだけ（" + changes + "件）";
+  document.getElementById("modeAll").classList.toggle("active", queueMode === "all");
+  document.getElementById("modeOther").classList.toggle("active", queueMode === "other");
+  document.getElementById("modeChanged").classList.toggle("active", queueMode === "changed");
+  writeOut();
+}
+function writeOut(){
+  var lines = [];
+  for(var k = 0; k < N; k++){
+    var v = canonicalValue(parseLabel(labels[k]));
+    if(v) lines.push(k + "=" + v);
+  }
+  document.getElementById("out").value =
+    "# 2nyan アルバムの猫ラベル（変更 " + changedIndices().length + "件 / 全" + N + "枚）\n" +
+    lines.join("\n");
+}
+
+document.getElementById("confirmNext").onclick = confirmNext;
+document.getElementById("clear").onclick = function(){ delete labels[i]; save(); paint(); };
+document.getElementById("prev").onclick = function(){ var n = moveInQueue(-1); if(n >= 0) go(n); };
+document.getElementById("next").onclick = function(){ var n = moveInQueue(1); if(n >= 0) go(n); };
+document.getElementById("modeAll").onclick = function(){ queueMode = "all"; paint(); };
+document.getElementById("modeOther").onclick = function(){
+  if(!OTHER_ORDER.length) return;
+  var r = nextUncheckedOther(-1);
+  if(r < 0){
+    if(!confirm("「その他の猫ちゃん」だった写真はすべて確認済みです。最初から見直しますか？")) return;
+    checkedOther = {};
+    save();
+    r = OTHER_ORDER[0];
+  }
+  queueMode = "other";
+  go(r);
+};
+document.getElementById("modeChanged").onclick = function(){
+  var list = changedIndices();
+  if(!list.length){ alert("変更した写真はまだありません。"); return; }
+  queueMode = "changed";
+  go(list[0]);
+};
+document.getElementById("jumpTo").onclick = function(){
+  var n = Number(document.getElementById("jumpNumber").value);
+  if(!Number.isInteger(n) || n < 0 || n >= N){ alert("0〜177の写真番号を入力してください。"); return; }
+  queueMode = "all";
+  go(n);
+};
+document.getElementById("jumpNumber").addEventListener("keydown", function(e){
+  if(e.key === "Enter") document.getElementById("jumpTo").click();
+});
+document.getElementById("copy").onclick = function(){
+  var t = document.getElementById("out");
+  var self = this;
+  function copied(){
+    self.textContent = "コピーしました";
+    setTimeout(function(){ self.textContent = "コピーする"; }, 2200);
+  }
+  function fallback(){
+    t.select();
+    try{ if(document.execCommand("copy")){ copied(); return; } }catch(e){}
+    self.textContent = "選択しました。長押ししてコピーしてください";
+    setTimeout(function(){ self.textContent = "コピーする"; }, 3200);
+  }
+  if(navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(t.value).then(copied, fallback);
+  }else fallback();
+};
+document.getElementById("reset").onclick = function(){
+  if(!confirm("この端末で行った変更を取り消し、公開中のラベルへ戻します。よろしいですか？")) return;
+  labels = {};
+  checkedOther = {};
+  seedCurrent();
+  queueMode = "all";
+  save();
+  go(0);
+};
+document.addEventListener("keydown", function(e){
+  if(e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT") return;
+  if(e.key === "ArrowLeft"){ e.preventDefault(); document.getElementById("prev").click(); }
+  if(e.key === "ArrowRight"){ e.preventDefault(); document.getElementById("next").click(); }
+});
+paint();
+</script>
+</body>
+</html>

@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>猫倶楽部｜東京科学大学の猫たち</title>
+<meta name="description" content="東京科学大学のキャンパスにいる猫たちを見守る有志の集まりです。給餌・見守り・保護活動と、その資金づくりについてお知らせします。">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
+<script>
+/* ホーム画面のアイコンから開いたかどうかを、描画される前に判定しておく。
+   アプリのときだけ下タブを出し、ブラウザで見たときは活動紹介のサイトのまま。 */
+(function(){
+  var app = false;
+  try{
+    app = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+       || window.navigator.standalone === true;
+  }catch(e){}
+  window.__isApp = app;
+  if(app) document.documentElement.className += ' app-mode';
+  /* アイコンから起動した1回目だけ、ギャラリーへ送る。
+     「活動について」タブから戻ってきたときは、印が残っているので送らない。 */
+  if(app){
+    try{
+      if(!sessionStorage.getItem('nk-launched')){
+        sessionStorage.setItem('nk-launched','1');
+        location.replace('album.html');
+      }
+    }catch(e){}
+  }
+})();
+</script>
+<!-- スマホのホーム画面に置けるようにするための設定（PWA） -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#FBF7F0">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="猫倶楽部">
+<meta property="og:title" content="猫倶楽部｜東京科学大学の猫たち">
+<meta property="og:description" content="東京科学大学のキャンパスにいる猫たちを見守る有志の集まりです。">
+<meta property="og:type" content="website">
+<style>
+  /* ============================================================
+     猫倶楽部 Webページ ひな型
+     - このファイル1枚で完結します（CSS/JS/画像すべて内蔵）
+     - 数字や写真が決まったら、該当箇所のコメントを目印に差し替えてください
+     ============================================================ */
+
+  :root{
+    --cream:      #FBF7F0;
+    --cream-deep: #F3EBDD;
+    --ink:        #3A3129;
+    --ink-soft:   #6E6155;
+    --brown:      #8B6B45;
+    --brown-deep: #6B5133;
+    --accent:     #C98B4B;
+    --line:       #E3D8C6;
+    --white:      #FFFFFF;
+    --radius:     16px;
+    --shadow:     0 2px 8px rgba(90,70,45,.06), 0 12px 28px rgba(90,70,45,.07);
+    --maxw:       1080px;
+  }
+
+  *,*::before,*::after{box-sizing:border-box}
+  /* 日本語の改行位置を整える。
+     auto-phrase は文節の切れ目で折り返す（対応ブラウザのみ効く）。
+     balance は見出しの行の長さを揃え、pretty は最終行の一語残りを防ぐ。 */
+  h1,h2,h3,h4{text-wrap:balance; line-break:strict}
+  p,li,dd,dt,figcaption,td,th,.who,.tag{word-break:auto-phrase; line-break:strict}
+  .sec-head p,.hero-copy p,.contact-box p,.circlecut-band p{text-wrap:pretty}
+  html{scroll-behavior:smooth; scroll-padding-top:72px}
+  body{
+    margin:0; background:var(--cream); color:var(--ink);
+    font-family:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Yu Gothic","Noto Sans JP",sans-serif;
+    font-size:16px; line-height:1.9; letter-spacing:.02em;
+    -webkit-font-smoothing:antialiased;
+  }
+  img{max-width:100%; display:block}
+  a{color:var(--brown-deep)}
+
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 24px}
+
+  /* ---------- ヘッダー ---------- */
+  header{
+    position:sticky; top:0; z-index:50;
+    background:rgba(251,247,240,.88); backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  .navbar{
+    max-width:var(--maxw); margin:0 auto; padding:12px 24px;
+    display:flex; align-items:center; gap:20px;
+  }
+  .brand{display:flex; align-items:center; gap:10px; text-decoration:none; color:var(--ink); flex-shrink:0}
+  .brand .mark{
+    width:34px;height:34px;border-radius:10px;background:var(--brown);
+    display:grid;place-items:center;color:#fff;font-size:17px;line-height:1
+  }
+  .brand b{font-size:17px; letter-spacing:.08em}
+  .brand small{display:block; font-size:10px; color:var(--ink-soft); letter-spacing:.04em; font-weight:400}
+  /* ヘッダーの並び。
+     「アルバム」「ごはん板」「支援する」は .nav-actions にまとめてある。
+     スマホでは、この3つを屋号と同じ行に固定し、
+     ページ内リンクの方を下の行に流す（下の @media を参照）。 */
+  .nav-sections{margin-left:auto; display:flex; gap:4px; flex-wrap:wrap}
+  .nav-actions{display:flex; gap:6px; flex-shrink:0}
+  nav a,.nav-actions a{
+    text-decoration:none; color:var(--ink-soft); font-size:14px; font-weight:600;
+    padding:7px 12px; border-radius:999px; transition:.2s; white-space:nowrap
+  }
+  nav a:hover{background:var(--cream-deep); color:var(--brown-deep)}
+  a.nav-gohan,a.nav-album{
+    border:1px solid var(--line); background:var(--white); color:var(--brown-deep)
+  }
+  a.nav-gohan:hover,a.nav-album:hover{background:var(--cream-deep); color:var(--brown-deep)}
+  a.cta{background:var(--brown); color:#fff}
+  a.cta:hover{background:var(--brown-deep); color:#fff}
+
+  /* ---------- ヒーロー ---------- */
+  .hero{
+    position:relative; overflow:hidden; height:clamp(400px,62vh,520px);
+    background:var(--brown-deep)
+  }
+  .hero-slides{position:absolute; inset:0}
+  .hero-img{
+    position:absolute; inset:0; width:100%; height:100%;
+    object-fit:cover; object-position:center; opacity:0;
+    transition:opacity 1s ease
+  }
+  .hero-img.is-active{opacity:1}
+  .hero-veil{
+    position:absolute; inset:0; z-index:1;
+    background:linear-gradient(180deg, rgba(58,49,41,.42) 0%, rgba(58,49,41,.20) 45%, rgba(58,49,41,.62) 100%);
+  }
+  .hero-copy{
+    position:absolute; inset:0; z-index:2; display:flex; flex-direction:column; justify-content:center;
+    max-width:var(--maxw); margin:0 auto; padding:0 24px; color:#fff;
+  }
+  .hero-dots{
+    position:absolute; right:max(24px,calc((100% - var(--maxw))/2 + 24px)); bottom:22px; z-index:3;
+    display:flex; gap:9px; padding:8px 10px; border-radius:999px;
+    background:rgba(40,31,24,.28); backdrop-filter:blur(6px)
+  }
+  .hero-dot{
+    width:11px; height:11px; padding:0; border:2px solid rgba(255,255,255,.82);
+    border-radius:50%; background:transparent; cursor:pointer
+  }
+  .hero-dot[aria-current="true"]{background:#fff; transform:scale(1.12)}
+  .hero-dot:focus-visible{outline:3px solid var(--accent); outline-offset:3px}
+  .hero-copy h1{
+    font-size:clamp(28px,5.2vw,46px); line-height:1.45; margin:0 0 14px;
+    text-shadow:0 2px 20px rgba(0,0,0,.35); font-weight:700;
+  }
+  .hero-copy p{
+    max-width:34em; font-size:clamp(14px,1.6vw,16px); margin:0 0 24px;
+    text-shadow:0 1px 12px rgba(0,0,0,.4);
+  }
+  .hero-btns{display:flex; gap:12px; flex-wrap:wrap}
+  .btn{
+    display:inline-block; text-decoration:none; font-weight:700; font-size:15px;
+    padding:13px 26px; border-radius:999px; transition:.2s; border:2px solid transparent;
+  }
+  .btn-main{background:var(--accent); color:#fff}
+  .btn-main:hover{background:#B4783C; transform:translateY(-1px)}
+  .btn-ghost{border-color:rgba(255,255,255,.7); color:#fff}
+  .btn-ghost:hover{background:rgba(255,255,255,.16)}
+  .btn-outline{border-color:var(--brown); color:var(--brown-deep)}
+  .btn-outline:hover{background:var(--brown); color:#fff}
+
+  /* ---------- セクション共通 ---------- */
+  section{padding:76px 0}
+  section:nth-of-type(even){background:var(--white)}
+  .sec-head{text-align:center; margin-bottom:44px}
+  .sec-head h2{font-size:clamp(22px,3.4vw,30px); margin:0 0 12px; font-weight:700}
+  .sec-head p{color:var(--ink-soft); font-size:15px; margin:0 auto; max-width:38em}
+
+  .card{
+    background:var(--white); border:1px solid var(--line); border-radius:var(--radius);
+    padding:28px; box-shadow:var(--shadow);
+  }
+  section:nth-of-type(even) .card{background:var(--cream)}
+  .grid{display:grid; gap:22px}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .g2{grid-template-columns:repeat(2,1fr)}
+
+  .card h3{margin:0 0 10px; font-size:18px}
+  .card p{margin:0; color:var(--ink-soft); font-size:14.5px}
+  .icon{
+    width:44px;height:44px;border-radius:12px;background:var(--cream-deep);
+    display:grid;place-items:center;font-size:22px;margin-bottom:14px
+  }
+  section:nth-of-type(even) .icon{background:var(--white)}
+
+  /* ---------- 猫プロフィール ----------
+     猫は今後増える予定なので、2匹固定ではなく
+     「入るだけ並べて、入らなければ折り返す」形にしてある。
+     1匹だけのときに間延びしないよう、最大幅も決めておく。 */
+  .cats{
+    display:grid; gap:26px;
+    grid-template-columns:repeat(auto-fit, minmax(290px, 1fr));
+    max-width:var(--maxw); margin:0 auto;
+  }
+  .cat{
+    background:var(--white); border:1px solid var(--line); border-radius:var(--radius);
+    overflow:hidden; box-shadow:var(--shadow);
+  }
+  section:nth-of-type(even) .cat{background:var(--cream)}
+  .cat-photos{background:var(--cream-deep)}
+  .cat-photo-main{display:block; overflow:hidden}
+  .cat-photo-main img{width:100%; aspect-ratio:4/3; object-fit:cover; transition:transform .3s}
+  .cat-photo-main:hover img{transform:scale(1.025)}
+  .cat-photo-strip{display:grid; grid-template-columns:repeat(4,1fr); gap:4px; padding:4px}
+  .cat-photo-strip a{display:block; overflow:hidden; border-radius:7px}
+  .cat-photo-strip img{width:100%; aspect-ratio:1/1; object-fit:cover; transition:transform .25s}
+  .cat-photo-strip a:hover img{transform:scale(1.06)}
+  .cat-photos a:focus-visible{outline:3px solid var(--accent); outline-offset:-3px}
+  .cat-body{padding:22px 24px 26px}
+  .cat-body h3{margin:0 0 2px; font-size:22px}
+  .cat-body .yomi{font-size:12px; color:var(--ink-soft); letter-spacing:.1em; margin:0 0 14px}
+  .tags{display:flex; gap:6px; flex-wrap:wrap; margin:0 0 16px}
+  .tag{
+    font-size:11.5px; font-weight:700; padding:4px 10px; border-radius:999px;
+    background:var(--cream-deep); color:var(--brown-deep)
+  }
+  section:nth-of-type(even) .tag{background:var(--cream-deep)}
+  /* どのキャンパスの猫かは、猫ごとに持たせる。
+     大学全体の活動なので、屋号や見出しの側では場所を名乗らない。 */
+  .cat-body .cat-where{
+    display:flex; width:max-content; max-width:100%; align-items:center; gap:5px; margin:0 0 18px;
+    font-size:11.5px; font-weight:700; color:var(--brown-deep);
+    background:var(--cream); padding:3px 11px 3px 8px; border-radius:999px;
+    border:1px solid var(--line)
+  }
+  .cat-where svg{width:12px; height:12px; flex:none}
+  .cat-body p{margin:0; font-size:14.5px; color:var(--ink-soft)}
+  .cat-body .voice{
+    margin-top:12px; padding:11px 14px 11px 16px; border-radius:12px;
+    background:var(--cream-deep); color:var(--brown-deep); font-size:14px; position:relative
+  }
+  section:nth-of-type(even) .cat-body .voice{background:var(--cream)}
+  .cat-body .voice::before{
+    content:""; position:absolute; top:-6px; left:22px; width:12px; height:12px;
+    background:inherit; transform:rotate(45deg)
+  }
+
+  /* ---------- 支援する ---------- */
+  .support-main{
+    display:grid; grid-template-columns:1.15fr .85fr; gap:26px; align-items:stretch;
+  }
+  .support-hero{
+    background:linear-gradient(150deg,var(--brown) 0%, var(--brown-deep) 100%);
+    color:#fff; border-radius:var(--radius); padding:36px; box-shadow:var(--shadow);
+    display:flex; flex-direction:column;
+  }
+  .support-hero h3{margin:0 0 14px; font-size:22px}
+  .support-hero p{margin:0 0 20px; font-size:14.5px; opacity:.92; color:#fff}
+  .support-hero .btn{background:#fff; color:var(--brown-deep); align-self:flex-start; margin-top:auto}
+  .support-hero .btn:hover{background:var(--cream-deep)}
+  .support-note{font-size:12.5px; opacity:.8; margin-top:14px !important}
+  .support-side{display:grid; gap:18px; align-content:start}
+  .mini{
+    background:var(--white); border:1px solid var(--line); border-radius:var(--radius);
+    padding:20px 22px; box-shadow:var(--shadow);
+  }
+  section:nth-of-type(even) .mini{background:var(--cream)}
+  .mini h4{margin:0 0 6px; font-size:15.5px}
+  .mini p{margin:0; font-size:13.5px; color:var(--ink-soft)}
+
+  .usage{margin-top:26px}
+  .usage ul{
+    list-style:none; padding:0; margin:14px 0 0;
+    display:grid; grid-template-columns:repeat(3,1fr); gap:14px
+  }
+  .usage li{
+    background:var(--cream-deep); border-radius:12px; padding:16px 18px; font-size:14px; font-weight:600
+  }
+  section:nth-of-type(even) .usage li{background:var(--white)}
+  .usage li span{display:block; font-size:12px; font-weight:400; color:var(--ink-soft); margin-top:4px}
+
+  /* ---------- グッズ ---------- */
+  .goods{display:grid; grid-template-columns:repeat(3,1fr); gap:22px}
+  .good{
+    background:var(--white); border:1px solid var(--line); border-radius:var(--radius);
+    overflow:hidden; box-shadow:var(--shadow); display:flex; flex-direction:column;
+  }
+  section:nth-of-type(even) .good{background:var(--cream)}
+  .good-thumb{
+    aspect-ratio:4/3; background:var(--cream-deep); display:grid; place-items:center;
+    color:var(--ink-soft); font-size:13px; text-align:center; padding:16px; overflow:hidden
+  }
+  .good-thumb img{width:100%; height:100%; object-fit:contain; background:#fff}
+  .good-body{padding:20px 22px 24px; flex:1; display:flex; flex-direction:column}
+  .good-body h3{margin:0 0 6px; font-size:17px}
+  .good-body .price{font-size:13px; color:var(--accent); font-weight:700; margin:0 0 10px}
+  .good-body p{margin:0 0 14px; font-size:14px; color:var(--ink-soft)}
+  .status{
+    margin-top:auto; font-size:12px; font-weight:700; padding:5px 12px; border-radius:999px;
+    background:var(--cream-deep); color:var(--brown-deep); align-self:flex-start
+  }
+  section:nth-of-type(even) .status{background:var(--white)}
+  .status.soon{background:#F5E3CD; color:#9A6A2E}
+
+  .circlecut-band{
+    display:grid; grid-template-columns:220px 1fr; gap:28px; align-items:center;
+    background:var(--white); border:1px solid var(--line); border-radius:var(--radius);
+    padding:24px 28px; margin-bottom:26px; box-shadow:var(--shadow);
+  }
+  section:nth-of-type(even) .circlecut-band{background:var(--cream)}
+  .circlecut-band img{border-radius:10px; border:1px solid var(--line)}
+  .circlecut-band h3{margin:0 0 8px; font-size:19px}
+  .circlecut-band p{margin:0; font-size:14.5px; color:var(--ink-soft)}
+  .circlecut-band .event{
+    margin:14px 0 0; display:grid; grid-template-columns:auto 1fr; gap:6px 16px;
+    font-size:14px; align-items:baseline
+  }
+  .circlecut-band .event dt{
+    font-weight:700; color:var(--brown-deep); font-size:12.5px;
+    background:var(--cream-deep); padding:2px 10px; border-radius:99px; justify-self:start
+  }
+  section:nth-of-type(even) .circlecut-band .event dt{background:var(--cream)}
+  .circlecut-band .event dd{margin:0; color:var(--ink)}
+  @media(max-width:760px){ .circlecut-band .event{grid-template-columns:1fr; gap:2px 0} 
+    .circlecut-band .event dd{margin-bottom:8px} }
+
+  /* ---------- 会計報告 ---------- */
+  .report-wrap{max-width:760px; margin:0 auto}
+  table.report{width:100%; border-collapse:collapse; margin-top:18px; font-size:14.5px}
+  table.report th, table.report td{
+    padding:13px 14px; border-bottom:1px solid var(--line); text-align:left
+  }
+  table.report th{font-size:12.5px; letter-spacing:.08em; color:var(--ink-soft); font-weight:700}
+  table.report td.num{text-align:right; font-variant-numeric:tabular-nums}
+  table.report tr.total td{font-weight:700; border-top:2px solid var(--line); border-bottom:none}
+  .ph{color:#B7A88F; font-style:normal}
+  .soon-txt{color:#B0A18A; font-size:13px}
+
+  /* ---------- ギャラリー ---------- */
+  .gallery{
+    display:grid; grid-template-columns:repeat(4,1fr); gap:14px
+  }
+  .gallery button{
+    padding:0; border:0; background:none; cursor:zoom-in; border-radius:12px; overflow:hidden;
+    box-shadow:var(--shadow); line-height:0
+  }
+  .gallery img{width:100%; aspect-ratio:1/1; object-fit:cover; transition:transform .35s}
+  .gallery button:hover img{transform:scale(1.05)}
+
+  #lightbox{
+    position:fixed; inset:0; z-index:100; background:rgba(30,24,18,.9);
+    display:none; align-items:center; justify-content:center; padding:24px; cursor:zoom-out
+  }
+  #lightbox.on{display:flex}
+  #lightbox figure{margin:0; display:flex; flex-direction:column; align-items:center; gap:12px}
+  #lightbox img{max-width:min(92vw,1000px); max-height:80vh; border-radius:10px; object-fit:contain}
+  #lightbox figcaption{color:#F0E7D9; font-size:13.5px; text-align:center; max-width:80vw}
+  #lightbox .nav{
+    position:absolute; top:50%; transform:translateY(-50%); background:rgba(255,255,255,.14);
+    border:0; color:#fff; font-size:30px; line-height:1; width:52px; height:52px;
+    border-radius:50%; cursor:pointer; display:grid; place-items:center
+  }
+  #lightbox .nav:hover{background:rgba(255,255,255,.26)}
+  #lightbox .prev{left:16px}
+  #lightbox .next{right:16px}
+  @media(max-width:640px){ #lightbox .nav{width:44px;height:44px;font-size:26px} }
+  #lightbox .close{
+    position:absolute; top:18px; right:22px; background:none; border:0; color:#fff;
+    font-size:30px; cursor:pointer; line-height:1
+  }
+
+  /* ---------- お問い合わせ / フッター ---------- */
+  .contact-box{max-width:640px; margin:0 auto; text-align:center}
+  .contact-box .mail{
+    display:inline-block; font-size:18px; font-weight:700; margin:6px 0 16px;
+    letter-spacing:.04em
+  }
+  footer{background:var(--brown-deep); color:#EFE6D8; padding:48px 0 32px; font-size:13.5px}
+  footer .wrap{display:grid; grid-template-columns:1.2fr 1fr; gap:32px}
+  footer h4{margin:0 0 10px; font-size:14px; color:#fff; letter-spacing:.06em}
+  footer p{margin:0 0 8px; line-height:1.85; opacity:.85}
+  footer a{color:#F3E3C9}
+  .disclaimer{
+    margin-top:32px; padding-top:20px; border-top:1px solid rgba(255,255,255,.18);
+    font-size:12px; opacity:.75; line-height:1.85
+  }
+
+  /* ---------- レスポンシブ ---------- */
+  @media(max-width:760px){ .circlecut-band{grid-template-columns:1fr; justify-items:center; text-align:center} .circlecut-band img{max-width:200px} }
+  @media(max-width:900px){
+    .g3,.goods{grid-template-columns:repeat(2,1fr)}
+    .gallery{grid-template-columns:repeat(3,1fr)}
+    .support-main{grid-template-columns:1fr}
+    .usage ul{grid-template-columns:1fr}
+    footer .wrap{grid-template-columns:1fr}
+  }
+  @media(max-width:640px){
+    section{padding:56px 0}
+    .wrap{padding:0 18px}
+    .navbar{padding:10px 16px; gap:6px 10px; flex-wrap:wrap}
+    .brand small{display:none}
+    /* スマホでは2行に分ける。
+       1行目 … 屋号と「アルバム」「ごはん板」「支援する」
+       2行目 … ページ内リンク（横に流れる）
+       押してほしい3つの導線を上の行へ残しておく。 */
+    .nav-actions{order:2; margin-left:auto; gap:4px}
+    .nav-sections{
+      order:3; flex:1 0 100%; margin:2px 0 0;
+      flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch;
+      scrollbar-width:none
+    }
+    .nav-sections::-webkit-scrollbar{display:none}
+    nav a{padding:6px 9px; font-size:12.5px}
+    .nav-actions a{padding:6px 8px; font-size:12px}
+    .hero{height:clamp(430px,68vh,540px)}
+    .g3,.g2,.goods,.cats,.gallery{grid-template-columns:1fr}
+    .gallery{grid-template-columns:repeat(2,1fr)}
+    .support-hero{padding:28px}
+  }
+
+  /* とても狭い画面（iPhone SE 第1世代など）。
+     屋号を少し縮めて、ボタン2つを1行目に収める。 */
+  @media(max-width:359px){
+    .navbar{padding:10px 12px; gap:6px 8px}
+    .brand .mark{width:28px;height:28px}
+    .brand b{font-size:15px}
+    .nav-actions{gap:3px}
+    .nav-actions a{padding:6px 7px; font-size:12px}
+  }
+
+
+  /* ---------- アプリの下タブ ----------
+     ホーム画面から起動したときだけ出る。指の届く下端に、
+     ギャラリーとごはん板を常に置いておくためのもの。 */
+  .tabbar{display:none}
+  .app-mode .tabbar{
+    display:flex; position:fixed; left:0; right:0; bottom:0; z-index:95;
+    gap:4px; padding:6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
+    background:rgba(255,255,255,.96); backdrop-filter:blur(12px);
+    border-top:1px solid var(--line);
+  }
+  .app-mode body{padding-bottom:84px}
+  .tabbar a{
+    flex:1 1 0; min-width:0;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+    text-decoration:none; color:var(--ink-soft);
+    font-size:11px; font-weight:700; line-height:1.2;
+    padding:7px 2px 5px; border-radius:14px; white-space:nowrap;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .tabbar a svg{width:25px; height:25px; display:block}
+  .tabbar a.is-on{color:var(--brown-deep); background:var(--cream-deep)}
+  .tabbar a:active{background:var(--cream-deep)}
+  /* アプリでは下タブに「ギャラリー」「ごはん板」があるので、ヘッダーのぶんは省く。
+     「支援する」は残す（アプリからも支援に進めるように）。 */
+  .app-mode .nav-gohan,.app-mode .nav-album{display:none}
+
+  /* ---------- ごはん板ゲート ---------- */
+  #gate{
+    position:fixed; inset:0; z-index:110; background:rgba(30,24,18,.55);
+    display:none; align-items:center; justify-content:center; padding:24px
+  }
+  #gate.on{display:flex}
+  .gate-box{
+    background:var(--white); border-radius:var(--radius); padding:30px 28px;
+    max-width:360px; width:100%; box-shadow:var(--shadow)
+  }
+  .gate-box h3{margin:0 0 8px; font-size:19px}
+  .gate-box p{margin:0 0 16px; font-size:14px; color:var(--ink-soft)}
+  .gate-box input{
+    width:100%; font:inherit; font-size:16px; padding:12px 14px;
+    border:1px solid var(--line); border-radius:12px; background:var(--cream);
+    color:var(--ink); margin-bottom:6px
+  }
+  .gate-box input:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+  .gate-err{color:#A8493A !important; font-size:13px !important; margin:4px 0 10px !important; display:none}
+  .gate-err.on{display:block}
+  .gate-btns{display:flex; gap:10px; margin-top:8px}
+  .gate-btns .btn{padding:11px 20px; font-size:14.5px}
+
+  /* ---------- ゆる手描きテーマ ---------- */
+  :root{--radius:20px}
+  .sec-head h2::before{
+    content:url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0NCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjQzk4QjRCIiBzdHJva2Utd2lkdGg9IjIuNiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNOSAxNyBRNiA1IDE1IDkgTDE5IDEyIFEyNCAxMCAyOSAxMiBMMzMgOSBRNDIgNSAzOSAxNyBRNDMgMjcgMzUgMzMgUTI0IDM5IDEzIDMzIFE1IDI3IDkgMTcgWiIvPjxjaXJjbGUgY3g9IjE4IiBjeT0iMjIiIHI9IjEuMiIgZmlsbD0iI0M5OEI0QiIvPjxjaXJjbGUgY3g9IjMwIiBjeT0iMjIiIHI9IjEuMiIgZmlsbD0iI0M5OEI0QiIvPjxwYXRoIGQ9Ik0yMSAyNyBRMjQgMzAgMjcgMjciLz48cGF0aCBkPSJNNCAyMCBMMTEgMjEgTTQgMjYgTDExIDI1IE00NCAyMCBMMzcgMjEgTTQ0IDI2IEwzNyAyNSIvPjwvc3ZnPg==);
+    display:block; width:42px; margin:0 auto 6px
+  }
+  .brand .mark{border-radius:12px}
+  .brand .mark svg{width:22px;height:20px}
+  .icon svg{width:26px;height:24px}
+  h1,h2,h3,h4{font-weight:700}
+  .cat{padding:12px 12px 0; background:#fff}
+  section:nth-of-type(even) .cat{background:#fff}
+  .cat img{border-radius:10px}
+  .cat .cat-body{padding:16px 12px 22px}
+  .cats .cat:first-child{transform:rotate(-1deg)}
+  .cats .cat:last-child{transform:rotate(.8deg)}
+  .gallery button{border:8px solid #fff; transition:transform .25s}
+  .gallery button:nth-child(odd){transform:rotate(-1.2deg)}
+  .gallery button:nth-child(even){transform:rotate(1deg)}
+  .gallery button:hover{transform:rotate(0deg)}
+  @media(max-width:640px){
+    .cats .cat:first-child,.cats .cat:last-child{transform:none}
+  }
+  @media(prefers-reduced-motion:reduce){
+    html{scroll-behavior:auto}
+    *{transition:none !important; animation:none !important}
+  }
+</style>
+</head>
+<body>
+
+
+<header>
+  <div class="navbar">
+    <a class="brand" href="#top">
+      <span class="mark"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 44" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17 Q6 5 15 9 L19 12 Q24 10 29 12 L33 9 Q42 5 39 17 Q43 27 35 33 Q24 39 13 33 Q5 27 9 17 Z"/><circle cx="18" cy="22" r="1.2" fill="#FFFFFF"/><circle cx="30" cy="22" r="1.2" fill="#FFFFFF"/><path d="M21 27 Q24 30 27 27"/><path d="M4 20 L11 21 M4 26 L11 25 M44 20 L37 21 M44 26 L37 25"/></svg></span>
+      <span>
+        <b>猫倶楽部</b>
+        <small>東京科学大学</small>
+      </span>
+    </a>
+    <nav class="nav-sections" aria-label="ページ内の移動">
+      <a href="#cats">猫ちゃん紹介</a>
+      <a href="#about">活動について</a>
+      <a href="#goods">グッズ</a>
+      <a href="#report">会計報告</a>
+      <a href="#gallery">ギャラリー</a>
+    </nav>
+    <div class="nav-actions">
+      <a href="album.html" class="nav-album">アルバム</a>
+      <a href="#" id="gohanNavLink" class="nav-gohan">ごはん板</a>
+      <a class="cta" href="#support">支援する</a>
+    </div>
+  </div>
+</header>
+
+<!-- ============================ ヒーロー ============================ -->
+<div class="hero" id="top" aria-roledescription="カルーセル" aria-label="キャンパスの猫ちゃん">
+  <div class="hero-slides" aria-live="off">
+    <img class="hero-img is-active" src="img/album/f003.webp" alt="ウッドデッキでくつろぐジュニア" loading="eager" fetchpriority="high">
+    <img class="hero-img" src="img/album/f086.webp" alt="こちらへ歩いてくるジュニア" loading="lazy">
+    <img class="hero-img" src="img/album/f043.webp" alt="室内の台に座る剛くん" loading="lazy">
+    <img class="hero-img" src="img/album/f064.webp" alt="爪とぎの上でくつろぐ剛くん" loading="lazy">
+    <img class="hero-img" src="img/album/f085.webp" alt="ウッドデッキで一緒に過ごす剛くんとジュニア" loading="lazy">
+  </div>
+  <div class="hero-veil"></div>
+  <div class="hero-copy">
+    <h1>キャンパスの猫たちと、<br>ゆっくり暮らしていくために。</h1>
+    <p>東京科学大学のキャンパスには、長く見守られてきた猫たちがいます。ごはん、通院、寒さ対策。日々の小さな積み重ねを、有志で分担しながら続けています。</p>
+    <div class="hero-btns">
+      <a class="btn btn-main" href="#cats">キャンパスの猫ちゃん紹介</a>
+      <a class="btn btn-ghost" href="#support">支援する</a>
+    </div>
+  </div>
+  <div class="hero-dots" aria-label="表示する写真">
+    <button class="hero-dot" type="button" aria-label="1枚目：ジュニア" aria-current="true"></button>
+    <button class="hero-dot" type="button" aria-label="2枚目：ジュニア" aria-current="false"></button>
+    <button class="hero-dot" type="button" aria-label="3枚目：剛くん" aria-current="false"></button>
+    <button class="hero-dot" type="button" aria-label="4枚目：剛くん" aria-current="false"></button>
+    <button class="hero-dot" type="button" aria-label="5枚目：剛くんとジュニア" aria-current="false"></button>
+  </div>
+</div>
+
+<!-- ============================ 猫ちゃん紹介 ============================
+     猫を1匹増やすときは、<article class="cat"> のかたまりを丸ごとコピーして
+     下に貼り、次の6か所を書き換えるだけでよい。並びは自動で折り返す。
+       ① id="cat-なまえ"（半角英字。ページ内リンク用）
+       ② <img> の src と alt
+       ③ <h3> の名前
+       ④ .yomi の読み・正式名称
+       ⑤ .cat-where のキャンパス名（猫ごとに持たせる。大学全体の活動なので
+          屋号や見出しの側ではキャンパスを名乗らない）
+       ⑥ .tag の特徴、紹介文、.voice のひとこと
+     写真は web\img\ に置き、幅900pxくらいのwebpにしておくと軽い。
+============================================================================ -->
+<section id="cats">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>猫ちゃん紹介</h2>
+      <p>いま見守っている猫たちと、これまで見守ってきた猫たちです。発見されたキャンパスと、当時の記録をもとに紹介します。</p>
+    </div>
+
+    <div class="cats">
+      <article class="cat" id="cat-tsuyoshi">
+        <div class="cat-photos">
+          <a class="cat-photo-main" href="album.html?cat=gou" aria-label="剛くんの写真をアルバムで見る"><img src="img/album/f043.webp" alt="室内の台に座る剛くん" loading="lazy"></a>
+          <div class="cat-photo-strip" aria-label="剛くんのアルバム写真">
+            <a href="album.html?cat=gou"><img src="img/album/t064.webp" alt="爪とぎの上でくつろぐ剛くん" loading="lazy"></a>
+            <a href="album.html?cat=gou"><img src="img/album/t110.webp" alt="ウッドデッキで横になる剛くん" loading="lazy"></a>
+            <a href="album.html?cat=gou"><img src="img/album/t014.webp" alt="小屋の中から顔を出す剛くん" loading="lazy"></a>
+            <a href="album.html?cat=gou"><img src="img/album/t005.webp" alt="ウッドデッキの剛くん" loading="lazy"></a>
+          </div>
+        </div>
+        <div class="cat-body">
+          <h3>剛くん</h3>
+          <p class="yomi">ごうくん</p>
+          <p class="cat-where"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21.5 C12 21.5 4.5 14.8 4.5 9.5 A7.5 7.5 0 0 1 19.5 9.5 C19.5 14.8 12 21.5 12 21.5 Z"/><circle cx="12" cy="9.5" r="2.6"/></svg>発見：横浜キャンパス（旧・すずかけ台）</p>
+          <div class="tags"><span class="tag">マイペース</span><span class="tag">ジュニアといっしょ</span><span class="tag">ダニ予防中</span></div>
+          <p>ジュニアと一緒にいることが多い猫です。その日の気分で食べる量が変わるので、残した量もあわせて記録しています。</p>
+          <p class="voice">気分が良い時なら、べつにさわってもいいにゃん</p>
+        </div>
+      </article>
+
+      <article class="cat" id="cat-junior">
+        <div class="cat-photos">
+          <a class="cat-photo-main" href="album.html?cat=junior" aria-label="ジュニアの写真をアルバムで見る"><img src="img/album/f003.webp" alt="ウッドデッキでくつろぐジュニア" loading="lazy"></a>
+          <div class="cat-photo-strip" aria-label="ジュニアのアルバム写真">
+            <a href="album.html?cat=junior"><img src="img/album/t086.webp" alt="こちらへ歩いてくるジュニア" loading="lazy"></a>
+            <a href="album.html?cat=junior"><img src="img/album/t031.webp" alt="室内でこちらを見るジュニア" loading="lazy"></a>
+            <a href="album.html?cat=junior"><img src="img/album/t042.webp" alt="ウッドデッキに座るジュニア" loading="lazy"></a>
+            <a href="album.html?cat=junior"><img src="img/album/t132.webp" alt="ウッドデッキで横になるジュニア" loading="lazy"></a>
+          </div>
+        </div>
+        <div class="cat-body">
+          <h3>ジュニア</h3>
+          <p class="yomi">正式名称：おとーさんジュニア</p>
+          <p class="cat-where"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21.5 C12 21.5 4.5 14.8 4.5 9.5 A7.5 7.5 0 0 1 19.5 9.5 C19.5 14.8 12 21.5 12 21.5 Z"/><circle cx="12" cy="9.5" r="2.6"/></svg>発見：横浜キャンパス（旧・すずかけ台）</p>
+          <div class="tags"><span class="tag">よく食べる</span><span class="tag">剛くんといっしょ</span><span class="tag">ダニ予防中</span></div>
+          <p>剛くんと行動を共にしていることが多い猫です。ごはんの食べっぷりがよく、どれくらい食べたかを毎回記録しています。</p>
+          <p class="voice">いっぱい撫でてもいいけど、チュールの用意はしてるのかにゃ？</p>
+        </div>
+      </article>
+
+      <article class="cat" id="cat-sai">
+        <div class="cat-photos">
+          <a class="cat-photo-main" href="album.html?cat=sai" aria-label="サイくんの写真をアルバムで見る"><img src="img/album/f113.webp" alt="サイくん、エンちゃん、スゥちゃん" loading="lazy"></a>
+        </div>
+        <div class="cat-body">
+          <h3>サイくん</h3>
+          <p class="yomi">さいくん</p>
+          <p class="cat-where"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21.5 C12 21.5 4.5 14.8 4.5 9.5 A7.5 7.5 0 0 1 19.5 9.5 C19.5 14.8 12 21.5 12 21.5 Z"/><circle cx="12" cy="9.5" r="2.6"/></svg>発見：国府台キャンパス</p>
+          <div class="tags"><span class="tag">スゥちゃんが大好き</span><span class="tag">サイエンスゥ</span></div>
+          <p>スゥちゃんのことが大好きで、いつも後を追っていたサイくん。小さなスゥちゃんを見守るような姿が記録されています。</p>
+        </div>
+      </article>
+
+      <article class="cat" id="cat-en">
+        <div class="cat-photos">
+          <a class="cat-photo-main" href="album.html?cat=en" aria-label="エンちゃんの写真をアルバムで見る"><img src="img/album/f113.webp" alt="サイくん、エンちゃん、スゥちゃん" loading="lazy"></a>
+        </div>
+        <div class="cat-body">
+          <h3>エンちゃん</h3>
+          <p class="yomi">えんちゃん</p>
+          <p class="cat-where"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21.5 C12 21.5 4.5 14.8 4.5 9.5 A7.5 7.5 0 0 1 19.5 9.5 C19.5 14.8 12 21.5 12 21.5 Z"/><circle cx="12" cy="9.5" r="2.6"/></svg>発見：国府台キャンパス</p>
+          <div class="tags"><span class="tag">サイエンスゥ</span><span class="tag">新しい家族へ</span></div>
+          <p>保護猫シェルターを卒業し、最初に新しい家族のもとへ旅立ったエンちゃん。新しい名前は「媛（ヒメ）」ちゃんになりました。</p>
+        </div>
+      </article>
+
+      <article class="cat" id="cat-suu">
+        <div class="cat-photos">
+          <a class="cat-photo-main" href="album.html?cat=suu" aria-label="スゥちゃんの写真をアルバムで見る"><img src="img/album/f111.webp" alt="スゥちゃんとまるちゃん" loading="lazy"></a>
+          <div class="cat-photo-strip" aria-label="スゥちゃんのアルバム写真">
+            <a href="album.html?cat=suu"><img src="img/album/t113.webp" alt="サイくん、エンちゃん、スゥちゃん" loading="lazy"></a>
+          </div>
+        </div>
+        <div class="cat-body">
+          <h3>スゥちゃん</h3>
+          <p class="yomi">すぅちゃん</p>
+          <p class="cat-where"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21.5 C12 21.5 4.5 14.8 4.5 9.5 A7.5 7.5 0 0 1 19.5 9.5 C19.5 14.8 12 21.5 12 21.5 Z"/><circle cx="12" cy="9.5" r="2.6"/></svg>発見：国府台キャンパス</p>
+          <div class="tags"><span class="tag">天真爛漫</span><span class="tag">新しい家族へ</span></div>
+          <p>天真爛漫で無邪気なスゥちゃん。保護猫シェルターを卒業し、エンちゃんに続いて新しい家族のもとへ旅立ちました。</p>
+        </div>
+      </article>
+
+      <article class="cat" id="cat-maru">
+        <div class="cat-photos">
+          <a class="cat-photo-main" href="album.html?cat=maru" aria-label="まるちゃんの写真をアルバムで見る"><img src="img/album/f143.webp" alt="まるちゃん" loading="lazy"></a>
+          <div class="cat-photo-strip" aria-label="まるちゃんのアルバム写真">
+            <a href="album.html?cat=maru"><img src="img/album/t111.webp" alt="スゥちゃんとまるちゃん" loading="lazy"></a>
+          </div>
+        </div>
+        <div class="cat-body">
+          <h3>まるちゃん</h3>
+          <p class="yomi">まるちゃん</p>
+          <p class="cat-where"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21.5 C12 21.5 4.5 14.8 4.5 9.5 A7.5 7.5 0 0 1 19.5 9.5 C19.5 14.8 12 21.5 12 21.5 Z"/><circle cx="12" cy="9.5" r="2.6"/></svg>発見：国府台キャンパス</p>
+          <div class="tags"><span class="tag">小柄</span><span class="tag">見守るお母さん</span></div>
+          <p>子どもたちの旅立ちを静かに見守ったお母さん猫。とても小柄で、人のそばに長くいてくれた姿も記録されています。</p>
+        </div>
+      </article>
+
+      <article class="cat" id="cat-dai">
+        <div class="cat-photos">
+          <a class="cat-photo-main" href="album.html?cat=dai" aria-label="ダイくんの写真をアルバムで見る"><img src="img/album/f120.webp" alt="ダイくん" loading="lazy"></a>
+        </div>
+        <div class="cat-body">
+          <h3>ダイくん</h3>
+          <p class="yomi">だいくん</p>
+          <p class="cat-where"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21.5 C12 21.5 4.5 14.8 4.5 9.5 A7.5 7.5 0 0 1 19.5 9.5 C19.5 14.8 12 21.5 12 21.5 Z"/><circle cx="12" cy="9.5" r="2.6"/></svg>発見：横浜キャンパス（旧・すずかけ台）</p>
+          <div class="tags"><span class="tag">甘えん坊</span><span class="tag">膝乗り</span><span class="tag">家猫修行</span></div>
+          <p>人に慣れ、膝に乗るのが好きな甘えん坊。元気いっぱいで、先住猫との接し方を学びながら家猫になる準備を進めていました。</p>
+        </div>
+      </article>
+
+      <article class="cat" id="cat-aya">
+        <div class="cat-photos">
+          <a class="cat-photo-main" href="album.html?cat=aya" aria-label="彩さんの写真をアルバムで見る"><img src="img/album/f153.webp" alt="彩さん" loading="lazy"></a>
+        </div>
+        <div class="cat-body">
+          <h3>彩さん</h3>
+          <p class="yomi">あやさん</p>
+          <p class="cat-where"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21.5 C12 21.5 4.5 14.8 4.5 9.5 A7.5 7.5 0 0 1 19.5 9.5 C19.5 14.8 12 21.5 12 21.5 Z"/><circle cx="12" cy="9.5" r="2.6"/></svg>発見：横浜キャンパス（旧・すずかけ台）</p>
+          <div class="tags"><span class="tag">ふっくら</span><span class="tag">2021〜2022年の記録</span></div>
+          <p>2021年頃から時々姿を見せた、ふっくらとした美しい猫。剛くんやジュニアとも穏やかに過ごし、2022年4月以降は見かけられていない記録です。</p>
+        </div>
+      </article>
+
+      <article class="cat" id="cat-kitty">
+        <div class="cat-photos">
+          <a class="cat-photo-main" href="album.html?cat=kitty" aria-label="キティちゃんの写真をアルバムで見る"><img src="img/album/f158.webp" alt="キティちゃん" loading="lazy"></a>
+          <div class="cat-photo-strip" aria-label="キティちゃんのアルバム写真">
+            <a href="album.html?cat=kitty"><img src="img/album/t159.webp" alt="キティちゃん" loading="lazy"></a>
+          </div>
+        </div>
+        <div class="cat-body">
+          <h3>キティちゃん</h3>
+          <p class="yomi">きてぃちゃん</p>
+          <p class="cat-where"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21.5 C12 21.5 4.5 14.8 4.5 9.5 A7.5 7.5 0 0 1 19.5 9.5 C19.5 14.8 12 21.5 12 21.5 Z"/><circle cx="12" cy="9.5" r="2.6"/></svg>発見：横浜キャンパス（旧・すずかけ台）</p>
+          <div class="tags"><span class="tag">黒白</span><span class="tag">2017〜2018年の記録</span></div>
+          <p>2017〜2018年頃に見守られた小さな黒白猫。ジュニアと一緒に現れ、ごはんを食べに来ていましたが、人にはなかなか近づかなかったそうです。</p>
+        </div>
+      </article>
+
+      <article class="cat" id="cat-hana">
+        <div class="cat-photos">
+          <a class="cat-photo-main" href="album.html?cat=hana" aria-label="ハナちゃんの写真をアルバムで見る"><img src="img/album/f161.webp" alt="ハナちゃん" loading="lazy"></a>
+        </div>
+        <div class="cat-body">
+          <h3>ハナちゃん</h3>
+          <p class="yomi">はなちゃん</p>
+          <p class="cat-where"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21.5 C12 21.5 4.5 14.8 4.5 9.5 A7.5 7.5 0 0 1 19.5 9.5 C19.5 14.8 12 21.5 12 21.5 Z"/><circle cx="12" cy="9.5" r="2.6"/></svg>発見：横浜キャンパス（旧・すずかけ台）</p>
+          <div class="tags"><span class="tag">4きょうだい</span><span class="tag">へそ天</span><span class="tag">家猫へ</span></div>
+          <p>2014年春に生まれた4きょうだいの1匹。無邪気で、G3棟のウッドデッキでお腹を見せて眠る姿も。2015年11月に家猫になりました。</p>
+        </div>
+      </article>
+
+      <article class="cat" id="cat-leaf">
+        <div class="cat-photos">
+          <a class="cat-photo-main" href="album.html?cat=leaf" aria-label="リーフくんの写真をアルバムで見る"><img src="img/album/f162.webp" alt="リーフくん" loading="lazy"></a>
+        </div>
+        <div class="cat-body">
+          <h3>リーフくん</h3>
+          <p class="yomi">りーふくん</p>
+          <p class="cat-where"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21.5 C12 21.5 4.5 14.8 4.5 9.5 A7.5 7.5 0 0 1 19.5 9.5 C19.5 14.8 12 21.5 12 21.5 Z"/><circle cx="12" cy="9.5" r="2.6"/></svg>発見：横浜キャンパス（旧・すずかけ台）</p>
+          <div class="tags"><span class="tag">葉っぱ模様</span><span class="tag">膝乗り</span><span class="tag">新しい家族へ</span></div>
+          <p>背中の葉っぱのような模様が名前の由来。2020年頃に痩せた姿で現れましたが、人懐っこく、のちに新しい家族のもとへ迎えられました。</p>
+        </div>
+      </article>
+
+      <article class="cat" id="cat-kuroshiro">
+        <div class="cat-photos">
+          <a class="cat-photo-main" href="album.html?cat=kuroshiro" aria-label="黒白ねこさんの写真をアルバムで見る"><img src="img/album/f133.webp" alt="黒白ねこさん" loading="lazy"></a>
+          <div class="cat-photo-strip" aria-label="黒白ねこさんのアルバム写真">
+            <a href="album.html?cat=kuroshiro"><img src="img/album/t134.webp" alt="黒白ねこさん" loading="lazy"></a>
+          </div>
+        </div>
+        <div class="cat-body">
+          <h3>黒白ねこさん</h3>
+          <p class="yomi">くろしろねこさん</p>
+          <p class="cat-where"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21.5 C12 21.5 4.5 14.8 4.5 9.5 A7.5 7.5 0 0 1 19.5 9.5 C19.5 14.8 12 21.5 12 21.5 Z"/><circle cx="12" cy="9.5" r="2.6"/></svg>発見：横浜キャンパス（旧・すずかけ台）</p>
+          <div class="tags"><span class="tag">黒白</span><span class="tag">2018年頃の記録</span><span class="tag">数回の目撃</span></div>
+          <p>2018年頃、すずかけ台キャンパスで数回だけ目撃された黒白猫。詳しい来歴は分かっていません。</p>
+        </div>
+      </article>
+    </div>
+
+    <p style="text-align:center; margin:34px 0 0; font-size:13.5px; color:var(--ink-soft)">
+      写真と記録がそろった猫から、紹介を少しずつ増やしています。
+    </p>
+  </div>
+</section>
+
+<!-- ============================ 支援する ============================ -->
+<section id="support">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>支援する</h2>
+      <p>いただいた支援は、キャンパスの猫たちのごはん・ケア・保護費用にあてています。使いみちは会計報告としてこのページで公開します。</p>
+    </div>
+
+    <div class="support-main">
+      <div class="support-hero">
+        <h3>ほしい物リストから贈る</h3>
+        <p>いま実際に足りていないフードや物資を、Amazonのほしい物リストにまとめています。リストから選んで贈っていただくと、そのまま活動に届きます。金額の大小は問いません。</p>
+        <!-- リストができたら href をそのURLに差し替える。URL未設定のあいだボタンは自動で無効になる -->
+        <a class="btn" href="#" id="wishlist-link" target="_blank" rel="noopener">ほしい物リストを見る（準備中）</a>
+        <p class="support-note">※ 贈り主の氏名・住所は、設定によっては活動側に表示されません。お名前を残されたい場合はギフトメッセージをご利用ください。</p>
+      </div>
+
+      <div class="support-side">
+        <div class="mini">
+          <h4>グッズを買って応援する</h4>
+          <p>ポストカードや卓上カレンダーの売上は、そのまま活動費にあてています。<a href="#goods">グッズを見る →</a></p>
+        </div>
+        <div class="mini">
+          <h4>活動に参加する</h4>
+          <p>ごはん当番や見守りを一緒に担っていただける方を探しています。学内の方はお気軽にご相談ください。<a href="#contact">連絡先 →</a></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card usage">
+      <h3>いただいた支援の使いみち</h3>
+      <ul>
+        <li>ごはん代<span>キャンパスの猫たちの日々のフード</span></li>
+        <li>ダニ予防・健康ケア<span>定期的に実施しています</span></li>
+        <li>保護・通院の費用<span>子猫や体調を崩した猫の医療費</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 活動について ============================ -->
+<section id="about">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>わたしたちについて</h2>
+      <p>猫倶楽部は、東京科学大学のキャンパスにいる猫たちを見守る有志の集まりです。学生と教職員が交代で、ごはんと見守りを担当しています。</p>
+    </div>
+
+    <div class="grid g3">
+      <div class="card">
+        <div class="icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 44" fill="none" stroke="#8B6B45" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 22 Q24 28 41 22 Q39 36 24 36 Q9 36 7 22 Z"/><path d="M17 15 Q18 11 17 8 M24 16 Q25 12 24 9 M31 15 Q32 11 31 8"/></svg></div>
+        <h3>毎日のごはん</h3>
+        <p>担当を分担して、キャンパスの猫たちにごはんをあげています。その日にどれくらい食べてもらえたか、どこにいたかを記録して、次の担当者に申し送りしています。</p>
+      </div>
+      <div class="card">
+        <div class="icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 44" fill="none" stroke="#8B6B45" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M24 35 Q10 26 9 17 Q9 9 16 9 Q21 9 24 15 Q27 9 32 9 Q39 9 39 17 Q38 26 24 35 Z"/><path d="M20 20 L28 20 M24 16 L24 24"/></svg></div>
+        <h3>健康の見守り</h3>
+        <p>ダニ予防などのケアを定期的に行っています。体調に気になるところがあれば、近隣の動物病院に相談したうえで対応を決めています。</p>
+      </div>
+      <div class="card">
+        <div class="icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 44" fill="none" stroke="#8B6B45" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 22 L24 8 L40 22 M12 20 L12 36 L36 36 L36 20"/><path d="M21 36 L21 27 Q24 25 27 27 L27 36"/></svg></div>
+        <h3>保護と里親探し</h3>
+        <p>キャンパスで生まれた子猫や、そのままでは冬を越せない猫については、一時的な預かりと里親探しを行うことがあります。</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:26px">
+      <h3>いま、困っていること</h3>
+      <p style="margin-bottom:10px">活動を続けるうえで、大きく2つの課題があります。</p>
+      <p><b style="color:var(--ink)">① 人手が足りていません。</b> 担当できる人が限られていて、当番の調整に苦労することがあります。当番の空き状況は<a href="#" id="gohanGateLink">ごはん板（関係者向け・あいことばが必要です）</a>で見られます。<br>
+      <b style="color:var(--ink)">② 費用がかかります。</b> ごはん代とダニ予防は毎月のことですし、保護した猫の治療費は1匹あたり数万円かかることもあります。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ グッズ ============================ -->
+<section id="goods">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>グッズ</h2>
+      <p>猫たちの写真からグッズを作っています。売上はキャンパスの猫の保護・通院・ごはん代にあてています。</p>
+    </div>
+
+    <div class="circlecut-band">
+      <img src="img/circlecut.webp" alt="猫倶楽部のサークルカット。ポストカードと卓上カレンダーの頒布案内">
+      <div>
+        <h3>工大祭で頒布します</h3>
+        <p>工大祭の同人即売会「<a href="https://comitech-official.github.io/" target="_blank" rel="noopener">こみてっく！</a>」に出展します。ポストカードなどを持っていく予定です。</p>
+        <dl class="event">
+          <dt>日時</dt><dd>2026年10月10日（土）・11日（日）　10:00〜16:00</dd>
+          <dt>会場</dt><dd>東京科学大学 大岡山キャンパス　西9号館 W9-327</dd>
+          <dt>入場</dt><dd>無料・事前登録不要</dd>
+        </dl>
+        <p style="font-size:13px; margin-top:12px">売上はキャンパスの猫の保護・通院・ごはん代にあてます。<br>
+        即売会の会場は大岡山キャンパスです。</p>
+      </div>
+    </div>
+
+    <div class="goods">
+      <article class="good">
+        <div class="good-thumb"><span class="soon-txt">写真は準備中です</span><!-- 刷り上がったら <img src="img/goods-postcard.webp" alt="ポストカード"> に差し替え --></div>
+        <div class="good-body">
+          <h3>ポストカード</h3>
+          <p class="price">価格・セット内容は調整中</p>
+          <p>キャンパスの猫たちの写真を使ったポストカードです。工大祭での頒布に向けて準備を進めています。</p>
+          <span class="status soon">工大祭に向けて準備中</span>
+        </div>
+      </article>
+
+      <article class="good">
+        <div class="good-thumb"><span class="soon-txt">写真は準備中です</span></div>
+        <div class="good-body">
+          <h3>卓上カレンダー</h3>
+          <p class="price">価格は未定</p>
+          <p>1年を通して猫たちと過ごせる卓上カレンダーです。制作するかどうか、時期も含めて検討中です。</p>
+          <span class="status soon">検討中</span>
+        </div>
+      </article>
+
+      <article class="good">
+        <div class="good-thumb"><img src="img/goods-photobook.webp" alt="写真集『ジュニア＆剛 写真集 日常』の表紙"></div>
+        <div class="good-body">
+          <h3>写真集『ジュニア、剛写真集 : 日常』</h3>
+          <p class="price">2025年3月刊行（自費出版）</p>
+          <p>企画・撮影・編集は勝尾徳斗さん。東京科学大学附属図書館にも所蔵されています。</p>
+          <a class="status" href="https://topics.libra.titech.ac.jp/recordID/catalog.bib/TT00022359" target="_blank" rel="noopener">図書館の書誌を見る</a>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 会計報告 ============================ -->
+<section id="report">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>会計報告</h2>
+      <p>いただいた支援と、その使いみちを年に1回まとめて公開します。支援してくださった方に、お金の流れが見える状態を保ちたいと考えています。</p>
+    </div>
+
+    <div class="report-wrap card">
+      <h3>2026年度のご報告</h3>
+      <p style="font-size:14px">
+        最初のご報告は、2026年度分（2027年3月まで）をまとめて、2027年の春ごろに公開する予定です。集計ができしだい、この表を更新します。<!-- 数字が出たら下の表の ph クラスを外して値を入れる -->
+      </p>
+
+      <table class="report">
+        <thead>
+          <tr><th>項目</th><th style="text-align:right">金額</th><th>内訳・備考</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>グッズ売上</td><td class="num ph">— 円</td><td class="ph">ポストカード等</td></tr>
+          <tr><td>ほしい物リストでのご支援</td><td class="num ph">— 点</td><td class="ph">フード・物資</td></tr>
+          <tr><td>ごはん代</td><td class="num ph">— 円</td><td class="ph">—</td></tr>
+          <tr><td>ダニ予防・通院費</td><td class="num ph">— 円</td><td class="ph">—</td></tr>
+          <tr><td>保護にかかった費用</td><td class="num ph">— 円</td><td class="ph">—</td></tr>
+          <tr class="total"><td>収支</td><td class="num ph">— 円</td><td class="ph">—</td></tr>
+        </tbody>
+      </table>
+
+      <p style="font-size:13px; color:var(--ink-soft); margin-top:18px">
+        ※ 領収書等の記録は活動内で保管しています。内容についてご質問があれば<a href="#contact">お問い合わせ</a>ください。
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ ギャラリー ============================ -->
+<section id="gallery">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>キャンパスの猫たち</h2>
+      <p>日々の見守りのなかで撮りためた写真です。クリックすると大きく表示され、矢印キーで次の写真に進めます。もっと見たい方はアルバムへどうぞ。</p>
+    </div>
+    <div class="gallery">
+      <button type="button"><img src="img/gallery-01.webp" alt="段ボールハウスで寄り添う2匹" loading="lazy" data-by="有志"></button>
+      <button type="button"><img src="img/gallery-02.webp" alt="大あくびをする剛くんとジュニア" loading="lazy" data-by="秋野"></button>
+      <button type="button"><img src="img/gallery-03.webp" alt="夕日のウッドデッキを歩く猫" loading="lazy" data-by="秋野"></button>
+      <button type="button"><img src="img/gallery-04.webp" alt="紅葉した木立の下でくつろぐ2匹" loading="lazy" data-by="有志"></button>
+      <button type="button"><img src="img/gallery-05.webp" alt="ベンチの上で遠くを見る猫" loading="lazy" data-by="秋野"></button>
+      <button type="button"><img src="img/gallery-06.webp" alt="ベンチに並んで丸くなる2匹" loading="lazy" data-by="有志"></button>
+      <button type="button"><img src="img/gallery-07.webp" alt="ウッドデッキに伏せる猫のアップ" loading="lazy" data-by="秋野"></button>
+      <button type="button"><img src="img/gallery-08.webp" alt="擁壁のそばでひなたぼっこする2匹" loading="lazy" data-by="秋野"></button>
+      <button type="button"><img src="img/gallery-09.webp" alt="草むらのふちに座る猫" loading="lazy" data-by="有志"></button>
+      <button type="button"><img src="img/gallery-10.webp" alt="曇り空の下、デッキに座る猫" loading="lazy" data-by="秋野"></button>
+      <button type="button"><img src="img/gallery-11.webp" alt="並んで昼寝する2匹" loading="lazy" data-by="秋野"></button>
+      <button type="button"><img src="img/gallery-12.webp" alt="植え込みの緑の中で休む2匹" loading="lazy" data-by="有志"></button>
+      <button type="button"><img src="img/gallery-13.webp" alt="こちらへ歩いてくる猫" loading="lazy" data-by="秋野"></button>
+      <button type="button"><img src="img/gallery-14.webp" alt="夏草のそばで涼む2匹" loading="lazy" data-by="有志"></button>
+      <button type="button"><img src="img/gallery-15.webp" alt="デッキの陰から見上げる猫" loading="lazy" data-by="秋野"></button>
+      <button type="button"><img src="img/gallery-16.webp" alt="朝の通路に立つ猫" loading="lazy" data-by="有志"></button>
+      <button type="button"><img src="img/gallery-17.webp" alt="並んで座る2匹のうしろ姿" loading="lazy" data-by="秋野"></button>
+      <button type="button"><img src="img/gallery-18.webp" alt="花のあいだで休む猫" loading="lazy" data-by="有志"></button>
+      <button type="button"><img src="img/gallery-19.webp" alt="日ざしのなかを歩く茶色い猫" loading="lazy" data-by="秋野"></button>
+      <button type="button"><img src="img/gallery-20.webp" alt="草のそばにたたずむ白黒の猫" loading="lazy" data-by="有志"></button>
+      <button type="button"><img src="img/gallery-21.webp" alt="キャリーのなかの子猫たち" loading="lazy" data-by="有志"></button>
+      <button type="button"><img src="img/gallery-22.webp" alt="逆光のなかでくつろぐ猫" loading="lazy" data-by="秋野"></button>
+      <button type="button"><img src="img/gallery-23.webp" alt="キャットタワーで過ごす2匹" loading="lazy" data-by="有志"></button>
+      <button type="button"><img src="img/gallery-24.webp" alt="のびをする茶色い猫" loading="lazy" data-by="秋野"></button>
+    </div>
+    <p style="text-align:center; margin-top:30px">
+      <a class="btn btn-outline" href="album.html">アルバムで178枚を見る</a>
+    </p>
+    <p style="text-align:center; margin-top:20px; font-size:13.5px; color:var(--ink-soft)">
+      写真は活動に関わっている有志が撮影したものです。<br>
+      無断での転載・商用利用はご遠慮ください。
+    </p>
+  </div>
+</section>
+
+<!-- ============================ お問い合わせ ============================ -->
+<section id="contact">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>お問い合わせ</h2>
+    </div>
+    <div class="contact-box card">
+      <p style="margin:0 0 4px">活動へのご参加、グッズや支援についてのご質問は、メールでお願いします。</p>
+      <!-- メールアドレスが決まったら、下の span を <a href="mailto:...">アドレス</a> に差し替える -->
+      <p class="mail"><span class="soon-txt">メールアドレスは準備中です</span></p>
+      <p style="font-size:13.5px; color:var(--ink-soft); margin:0">
+        活動用のメールアドレスを準備しています。使えるようになりましたら、ここに掲載します。<br>
+        それまでのあいだは、下の「Science Tokyo cats」のFacebookページからご連絡ください。<br>
+        猫の体調など急ぎのご用件は、学内の関係者へ直接お伝えください。
+      </p>
+      <div style="margin-top:22px">
+        <a class="btn btn-outline" href="https://www.facebook.com/Toukoudai.cats/?locale=ja_JP" target="_blank" rel="noopener">Facebookページを見る</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ フッター ============================ -->
+<footer>
+  <div class="wrap">
+    <div>
+      <h4>猫倶楽部</h4>
+      <p>東京科学大学のキャンパスにいる猫たちを見守る有志の集まりです。</p>
+      <p><a href="https://www.facebook.com/Toukoudai.cats/?locale=ja_JP" target="_blank" rel="noopener">Science Tokyo cats（旧 東工大 cats・Facebook）</a></p>
+    </div>
+    <div>
+      <h4>ページ内リンク</h4>
+      <p>
+        <a href="#cats">猫ちゃん紹介</a>　<a href="#support">支援する</a><br>
+        <a href="#about">活動について</a>　<a href="album.html">アルバム</a><br>
+        <a href="#goods">グッズ</a>　<a href="#report">会計報告</a><br>
+        <a href="#gallery">ギャラリー</a>　<a href="#contact">お問い合わせ</a>
+      </p>
+    </div>
+    <div class="disclaimer" style="grid-column:1/-1">
+      <p style="margin:0 0 6px"><b>このページについて</b></p>
+      <p>本ページは、東京科学大学の学生・教職員の有志が個人として運営しているもので、大学の公式な広報物ではありません。掲載している写真、およびポストカード等の制作物はいずれも有志による私的な制作物です。</p>
+      <p>制作・運営：猫倶楽部 有志一同<br>
+      写真：猫好きの方々</p>
+      <p style="margin:14px 0 0; opacity:.7">© <span id="year">2026</span> 猫倶楽部</p>
+    </div>
+  </div>
+</footer>
+
+<!-- アプリ（ホーム画面から起動）のときだけ出る下タブ -->
+<nav class="tabbar" aria-label="メニュー">
+  <a href="album.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.6" y="4.6" width="18.8" height="14.8" rx="3.2"/><path d="M4.2 17.4 L9 11.4 L12.8 15.2 L15.8 12.6 L19.8 17.4"/><circle cx="16.2" cy="9" r="1.3"/></svg><span>アルバム</span></a>
+  <a href="#" id="tabGohan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.8 11.8 Q12 9.6 21.2 11.8 Q19.6 19.4 12 19.4 Q4.4 19.4 2.8 11.8 Z"/><path d="M4.2 12.6 Q12 15.6 19.8 12.6"/><path d="M9 7.4 Q7.5 5.8 9 4.2"/><path d="M15 7.4 Q16.5 5.8 15 4.2"/></svg><span>ごはん板</span></a>
+  <a href="index.html" class="is-on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.6 8.6 Q3.1 2.8 7.6 4.6 L9.6 6.1 Q12 5.2 14.4 6.1 L16.4 4.6 Q20.9 2.8 19.4 8.6 Q21.4 13.4 17.4 16.4 Q12 19.3 6.6 16.4 Q2.6 13.4 4.6 8.6 Z"/><circle cx="9.2" cy="11.2" r="0.85" fill="currentColor" stroke="none"/><circle cx="14.8" cy="11.2" r="0.85" fill="currentColor" stroke="none"/><path d="M10.6 13.6 Q12 15 13.4 13.6"/></svg><span>活動について</span></a>
+</nav>
+
+<div id="gate" aria-hidden="true">
+  <div class="gate-box" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
+    <h3 id="gateTitle">ごはん板に入る</h3>
+    <p>ごはん当番の空き枠を、行ける人が自分で埋めていく板です。<br>
+    関係者向けなので、あいことばを入れてください。</p>
+    <input id="gateInput" type="text" inputmode="text" autocomplete="off" placeholder="あいことば">
+    <p class="gate-err" id="gateErr">あいことばが違うようです。</p>
+    <div class="gate-btns">
+      <button type="button" class="btn btn-main" id="gateGo">開く</button>
+      <button type="button" class="btn btn-outline" id="gateClose">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<div id="lightbox" aria-hidden="true">
+  <button class="close" aria-label="閉じる">×</button>
+  <button class="nav prev" aria-label="前の写真">‹</button>
+  <button class="nav next" aria-label="次の写真">›</button>
+  <figure>
+    <img alt="">
+    <figcaption></figcaption>
+  </figure>
+</div>
+
+<script>
+  // 年号を自動更新
+  document.getElementById('year').textContent = new Date().getFullYear();
+
+  // ヒーロー写真。動きを減らす設定の端末では自動で切り替えない。
+  (function(){
+    var hero = document.querySelector('.hero');
+    var slides = [].slice.call(document.querySelectorAll('.hero-img'));
+    var dots = [].slice.call(document.querySelectorAll('.hero-dot'));
+    if(!hero || slides.length < 2 || slides.length !== dots.length) return;
+    var current = 0;
+    var timer = null;
+    var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    function selectHero(n){
+      current = (n + slides.length) % slides.length;
+      slides.forEach(function(slide, i){
+        var on = i === current;
+        slide.classList.toggle('is-active', on);
+        slide.setAttribute('aria-hidden', on ? 'false' : 'true');
+      });
+      dots.forEach(function(dot, i){
+        dot.setAttribute('aria-current', i === current ? 'true' : 'false');
+      });
+    }
+    function stopHero(){
+      if(timer){ clearInterval(timer); timer = null; }
+    }
+    function startHero(){
+      stopHero();
+      if(!reduceMotion) timer = setInterval(function(){
+        if(!document.hidden) selectHero(current + 1);
+      }, 6500);
+    }
+    dots.forEach(function(dot, i){
+      dot.addEventListener('click', function(){ selectHero(i); startHero(); });
+    });
+    hero.addEventListener('mouseenter', stopHero);
+    hero.addEventListener('mouseleave', startHero);
+    hero.addEventListener('focusin', stopHero);
+    hero.addEventListener('focusout', function(e){
+      if(!hero.contains(e.relatedTarget)) startHero();
+    });
+    selectHero(0);
+    startHero();
+  })();
+
+  // ギャラリーのライトボックス
+  var lb = document.getElementById('lightbox');
+  var lbImg = lb.querySelector('img');
+  var lbCap = lb.querySelector('figcaption');
+  var shots = Array.prototype.slice.call(document.querySelectorAll('.gallery img'));
+  var idx = 0;
+  function show(i){
+    idx = (i + shots.length) % shots.length;
+    var img = shots[idx];
+    lbImg.src = img.src;
+    lbImg.alt = img.alt;
+    lbCap.textContent = img.alt + '（撮影：' + (img.dataset.by || '') + '）';
+  }
+  shots.forEach(function(img, i){
+    img.parentNode.addEventListener('click', function(){
+      show(i);
+      lb.classList.add('on');
+      lb.setAttribute('aria-hidden','false');
+      document.body.style.overflow = 'hidden';
+    });
+  });
+  function closeLb(){
+    lb.classList.remove('on');
+    lb.setAttribute('aria-hidden','true');
+    document.body.style.overflow = '';
+  }
+  lb.querySelector('.close').addEventListener('click', closeLb);
+  lb.querySelector('.prev').addEventListener('click', function(e){ e.stopPropagation(); show(idx-1); });
+  lb.querySelector('.next').addEventListener('click', function(e){ e.stopPropagation(); show(idx+1); });
+  lb.addEventListener('click', function(e){ if(e.target === lb) closeLb(); });
+  document.addEventListener('keydown', function(e){
+    if(!lb.classList.contains('on')) return;
+    if(e.key === 'Escape') closeLb();
+    if(e.key === 'ArrowLeft') show(idx-1);
+    if(e.key === 'ArrowRight') show(idx+1);
+  });
+
+  // ごはん板ゲート（あいことば・行き先・板の合鍵は暗号化してあります）
+  // 復号すると {"p":"行き先","k":"板の合鍵"} のJSONが出てくる。
+  // 合鍵は、ごはん板がサーバー（GAS）に読み書きを頼むときの通行証。
+  // URLを知っているだけの人が板を書き換えられないよう、GAS側が合鍵を確認する。
+  var GATE = {
+    salt: "cipSVTudEZpr5pum8EmxNA==",
+    iv:   "D9K7SFY/NlQGnlLs",
+    data: "LRy6o6ikteJJwBo7QfMT3TCzXmduYqReCnecv5Cdwm0iRbgCDyOwI77X5KDA3Yw/iYTvxr4bL0aqS6DjxJvajLR/CyKTfWz/IeLzUMsT8DmuB2URUg=="
+  };
+  function b64d(s){ return Uint8Array.from(atob(s), function(c){ return c.charCodeAt(0); }); }
+  async function gateTry(pw){
+    var enc = new TextEncoder();
+    var km = await crypto.subtle.importKey("raw", enc.encode(pw), "PBKDF2", false, ["deriveKey"]);
+    var key = await crypto.subtle.deriveKey(
+      {name:"PBKDF2", salt:b64d(GATE.salt), iterations:150000, hash:"SHA-256"},
+      km, {name:"AES-GCM", length:256}, false, ["decrypt"]);
+    var pt = await crypto.subtle.decrypt({name:"AES-GCM", iv:b64d(GATE.iv)}, key, b64d(GATE.data));
+    return new TextDecoder().decode(pt);
+  }
+  var gate = document.getElementById('gate');
+  var gateErr = document.getElementById('gateErr');
+  var gateInput = document.getElementById('gateInput');
+  function gateOpen(e){
+    if(e) e.preventDefault();
+    gate.classList.add('on'); gate.setAttribute('aria-hidden','false');
+    gateErr.classList.remove('on'); gateInput.value=''; gateInput.focus();
+  }
+  function gateClose(){
+    gate.classList.remove('on'); gate.setAttribute('aria-hidden','true');
+  }
+  async function gateGo(){
+    var pw = (gateInput.value || '').trim();
+    if(!pw){ gateInput.focus(); return; }
+    try{
+      var got = JSON.parse(await gateTry(pw));
+      // 次からは聞かなくて済むよう、この端末に行き先と合鍵を覚えておく
+      try{
+        localStorage.setItem('nk-gohan', got.p);
+        localStorage.setItem('nk-gohan-k', got.k);
+      }catch(e){}
+      location.href = got.p;
+    }catch(err){
+      gateErr.classList.add('on'); gateInput.select();
+    }
+  }
+
+  /* ごはん板タブ。
+     一度あいことばを入れた端末では行き先を覚えているので、そのまま開く。
+     まだの端末では、あいことばの窓を出す。 */
+  var GOHAN_KEY = 'nk-gohan';
+  var saved = null;
+  try{ saved = localStorage.getItem(GOHAN_KEY); }catch(e){}
+
+  var tabGohan = document.getElementById('tabGohan');
+  if(tabGohan){
+    if(saved){ tabGohan.setAttribute('href', saved); }
+    else{ tabGohan.addEventListener('click', gateOpen); }
+  }
+
+  ['gohanGateLink','gohanNavLink'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(!el) return;
+    // 覚えている端末では、あいことばを聞かずにそのまま開く
+    if(saved){ el.setAttribute('href', saved); return; }
+    el.addEventListener('click', gateOpen);
+  });
+  document.getElementById('gateGo').addEventListener('click', gateGo);
+  document.getElementById('gateClose').addEventListener('click', gateClose);
+  gateInput.addEventListener('keydown', function(e){ if(e.key==='Enter') gateGo(); });
+  gate.addEventListener('click', function(e){ if(e.target===gate) gateClose(); });
+
+  // ほしい物リストのURLが未設定なら、リンクを無効化しておく
+  var wl = document.getElementById('wishlist-link');
+  if(wl && wl.getAttribute('href') === '#'){
+    wl.addEventListener('click', function(e){ e.preventDefault(); });
+    wl.style.opacity = '.75';
+    wl.style.cursor = 'not-allowed';
+  } else if (wl) {
+    wl.textContent = 'ほしい物リストを見る';
+  }
+
+  /* ホーム画面から開いたときのために sw.js を登録する。
+     写真の読み込みが速くなり、電波が弱くても表示できる。
+     失敗しても普通のページとして動くので、握りつぶしてよい。 */
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('sw.js').catch(function(){});
+    });
+  }
+</script>
+</body>
+</html>
