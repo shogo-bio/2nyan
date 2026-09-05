@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>ごはん板｜猫倶楽部</title>
+<script>
+/* ホーム画面のアイコンから開いたかどうかを、描画される前に判定しておく。
+   アプリのときだけ下タブを出し、ブラウザで見たときは今までどおりの見た目にする。 */
+(function(){
+  var app = false;
+  try{
+    app = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+       || window.navigator.standalone === true;
+  }catch(e){}
+  window.__isApp = app;
+  if(app){
+    document.documentElement.className += ' app-mode';
+    // 起動済みの印。これがあると index.html がギャラリーへ送り直さない
+    try{ sessionStorage.setItem('nk-launched','1'); }catch(e){}
+  }
+})();
+</script>
+<!-- スマホのホーム画面に置けるようにするための設定（PWA）。
+     ごはん板は通信から最新状態を読み込み、控え（キャッシュ）は持たない。
+     期間を移動して過去の記録も見られるため、古い控えを表示しない。 -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#FBF7F0">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="ごはん板">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* 支援ページ（index.html）と同じ配色 */
+  --paper:#FBF7F0;   /* 背景 */
+  --card:#FFFFFF;    /* カード面 */
+  --ink:#3A3129;     /* 本文 */
+  --muted:#6E6155;   /* 補助文字 */
+  --line:#E3D8C6;    /* 罫線 */
+  --accent:#C98B4B;  /* アクセント */
+
+  /* 以下は状態色。空き＝アクセント、完了＝落ち着いた緑。差し替え不要 */
+  --open:var(--accent);
+  --open-bg:#F9EEDD;
+  --open-line:#D8AE6C;
+  --done:#4a6b4f;
+  --done-bg:#e8eee6;
+  --rest:#a8493a;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper);color:var(--ink);
+  font-family:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Yu Gothic","Noto Sans JP",sans-serif;
+  font-size:17px;line-height:1.65;-webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:640px;margin:0 auto;padding:20px 16px 72px}
+.eyebrow{font-size:12px;letter-spacing:.22em;color:var(--muted);font-weight:700;margin:0 0 18px}
+
+.home-link{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  min-height:48px;margin:0 0 16px;padding:11px 16px;
+  border:1.5px solid var(--accent);border-radius:14px;
+  background:var(--card);color:var(--accent);
+  box-shadow:0 2px 0 rgba(58,49,41,.08);
+  font-size:16px;font-weight:800;text-decoration:none;
+  transition:background .15s ease,transform .12s ease;
+}
+.home-link:hover{background:var(--open-bg);transform:translateY(-1px)}
+.home-link:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+.foot-home{
+  display:inline-block;margin-top:12px;padding:9px 14px;
+  border:1px solid var(--accent);border-radius:10px;
+  background:var(--card);color:var(--accent);
+  font-size:15px;font-weight:800;text-decoration:none;
+}
+@media (prefers-reduced-motion:reduce){.home-link{transition:none}}
+
+.banner{
+  background:#fff4d6;border:1px solid #e0c98a;border-radius:12px;
+  padding:11px 14px;margin-bottom:16px;font-size:14px;color:#6b5320;display:none;
+}
+.banner.is-on{display:block}
+
+.hero{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:22px 22px 24px;margin-bottom:14px}
+.hero-count{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.bignum{font-size:72px;line-height:.9;font-weight:800;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+.bignum.is-open{color:var(--open)}
+.bignum.is-clear{color:var(--done)}
+.hero-label{font-size:19px;font-weight:700}
+.hero-sub{margin:12px 0 0;color:var(--muted);font-size:15px}
+
+.namebar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--card);
+  border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin-bottom:26px}
+.namebar label{font-size:14px;font-weight:700;color:var(--muted);white-space:nowrap}
+.namebar input{flex:1;min-width:130px;font:inherit;font-size:16px;padding:9px 12px;
+  border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink)}
+.namebar input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+/* ---------- 表示コントロール ---------- */
+.board-controls{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin:0 0 22px}
+.control-row{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.rangebar,.viewbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:0;flex:1 1 280px}
+.rangebar span,.viewbar span{font-size:13px;font-weight:700;color:var(--muted);margin-right:2px;white-space:nowrap}
+.rangebar button,.viewbar button{font:inherit;font-size:13px;font-weight:700;padding:7px 14px;border-radius:999px;
+  border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;transition:.15s}
+.rangebar button:hover,.viewbar button:hover{background:var(--paper)}
+.rangebar button.on,.viewbar button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.rangebar button:focus-visible,.viewbar button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.periodbar{display:grid;grid-template-columns:auto 1fr auto auto;gap:7px;align-items:center;margin-top:12px;padding-top:11px;border-top:1px solid var(--line)}
+.periodbar button{font:inherit;font-size:13px;font-weight:700;padding:7px 11px;border-radius:10px;
+  border:1px solid var(--line);background:var(--paper);color:var(--ink);cursor:pointer;white-space:nowrap}
+.periodbar button:hover{background:var(--cream-deep)}
+.periodbar button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.period-label{text-align:center;font-size:14px;font-weight:800;color:var(--brown-deep);white-space:nowrap}
+.period-note{font-size:12px;color:var(--muted);margin:9px 2px 0;line-height:1.55}
+.calendar-tools{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.calendar-tools button{font:inherit;font-size:13px;font-weight:800;padding:8px 12px;border-radius:10px;
+  border:1px solid var(--accent);background:var(--card);color:var(--accent);cursor:pointer}
+.calendar-tools button:hover{background:var(--open-bg)}
+.calendar-tools button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.calendar-tools button[disabled]{opacity:.45;cursor:default;background:var(--paper)}
+.calendar-help{margin:0;color:var(--muted);font-size:12px;line-height:1.5}
+.calendar-link-wrap{margin:14px 0 0;padding-top:11px;border-top:1px solid var(--line);font-size:13px}
+.calendar-link-wrap a{color:var(--accent);font-weight:800;text-decoration:underline;text-underline-offset:3px}
+.calendar-link-wrap a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.list-board .day{margin-bottom:26px}
+.day-head{display:flex;align-items:baseline;gap:10px;margin:0 0 10px;padding-left:2px}
+.day-date{font-size:17px;font-weight:800}
+.day-dow{font-size:14px;font-weight:700;color:var(--muted)}
+.day-dow.is-rest{color:var(--rest)}
+.day-tag{margin-left:auto;font-size:12px;font-weight:700;color:var(--open);
+  background:var(--open-bg);border-radius:99px;padding:3px 10px}
+.day-tag.is-history{color:var(--muted);background:var(--paper)}
+.day.is-today .day-date{font-size:22px}
+
+.slots{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.slot{appearance:none;-webkit-appearance:none;display:flex;flex-direction:column;align-items:center;gap:7px;
+  font:inherit;text-align:center;cursor:pointer;border-radius:16px;padding:14px 8px 13px;
+  background:var(--card);border:1px solid var(--line);transition:transform .12s ease}
+.slot:hover{transform:translateY(-2px)}
+.slot:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.slot .time{font-size:13px;font-weight:700;color:var(--muted)}
+.slot .who{font-size:14px;font-weight:700;min-height:1.6em;word-break:break-word}
+.slot.is-open{background:var(--open-bg);border:1.5px dashed var(--open-line)}
+.slot.is-open .time,.slot.is-open .who{color:var(--open)}
+.slot.is-open .who{font-weight:800}
+.slot.is-taken{background:var(--done-bg);border-color:#c3d2c2}
+.slot.is-taken .who{color:var(--done)}
+.slot.is-mine{box-shadow:inset 0 0 0 2px var(--done)}
+.slot.is-past{opacity:.45}
+.slot[disabled]{cursor:default;opacity:.5}
+.dish{width:46px;height:34px;display:block}
+.slot.is-open .dish{animation:wait 2.6s ease-in-out infinite}
+@keyframes wait{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@media (prefers-reduced-motion:reduce){.slot{transition:none}.slot.is-open .dish{animation:none}}
+
+.note{font-size:13px;color:var(--muted);margin:7px 2px 0;border-left:2px solid var(--line);padding-left:9px}
+
+/* ---------- カレンダービュー ---------- */
+.calendar-board{padding-bottom:4px}
+.calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.calendar-weekday{font-size:12px;font-weight:800;color:var(--muted);text-align:center;padding:2px 0}
+.calendar-weekday.is-rest{color:var(--rest)}
+.calendar-cell{min-width:0;min-height:132px;background:var(--card);border:1px solid var(--line);border-radius:11px;padding:7px 6px 8px;overflow:hidden}
+.calendar-cell.is-other-month{background:transparent;opacity:.55}
+.calendar-cell.is-today{box-shadow:inset 0 0 0 2px var(--accent)}
+.calendar-cell-head{display:flex;align-items:baseline;gap:4px;margin-bottom:5px}
+.calendar-date{font-size:15px;font-weight:800}
+.calendar-cell.is-today .calendar-date{color:var(--accent)}
+.calendar-cell-dow{font-size:10px;font-weight:700;color:var(--muted)}
+.calendar-cell-dow.is-rest{color:var(--rest)}
+.calendar-slots{display:grid;gap:4px}
+.calendar-slot{appearance:none;-webkit-appearance:none;width:100%;min-width:0;display:flex;align-items:center;gap:4px;
+  font:inherit;text-align:left;cursor:pointer;padding:5px 4px;border-radius:8px;background:var(--card);
+  border:1px solid var(--line);color:var(--ink);overflow:hidden}
+.calendar-slot:hover{transform:none;background:var(--paper)}
+.calendar-slot:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
+.calendar-slot.is-open{background:var(--open-bg);border:1px dashed var(--open-line);color:var(--open)}
+.calendar-slot.is-taken{background:var(--done-bg);border-color:#c3d2c2;color:var(--done)}
+.calendar-slot.is-mine{box-shadow:inset 0 0 0 2px var(--done)}
+.calendar-slot.is-past{opacity:.45}
+.calendar-slot[disabled]{cursor:default;opacity:.45}
+.calendar-slot .dish{width:22px;height:17px;flex:none}
+.calendar-slot-label{font-size:11px;font-weight:800;flex:none}
+.calendar-slot-who{font-size:10px;font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.calendar-note{display:block;margin-top:4px;color:var(--muted);font-size:9px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:560px){
+  .board-controls{padding:10px 11px}
+  .control-row{display:block}
+  .rangebar,.viewbar{flex:none;margin:0 0 8px}
+  .periodbar{display:flex;flex-wrap:wrap;justify-content:center;gap:5px}
+  .period-label{order:-1;flex:1 1 100%;font-size:13px}
+  .periodbar button{padding:7px 8px;font-size:12px}
+  .calendar{gap:3px}
+  .calendar-cell{min-height:94px;padding:5px 3px 5px;border-radius:8px}
+  .calendar-cell-head{gap:2px;margin-bottom:3px}
+  .calendar-date{font-size:13px}
+  .calendar-cell-dow{font-size:9px}
+  .calendar-slots{gap:2px}
+  .calendar-slot{padding:4px 2px;gap:2px;border-radius:6px}
+  .calendar-slot .dish{display:none}
+  .calendar-slot-label{font-size:10px}
+  .calendar-slot-who{font-size:9px}
+  .calendar-note{font-size:8px}
+}
+@media(max-width:380px){
+  .calendar-slot-who{display:none}
+  .calendar-cell{min-height:80px}
+}
+
+.scrim{position:fixed;inset:0;background:rgba(58,47,38,.42);display:flex;align-items:flex-end;
+  justify-content:center;opacity:0;pointer-events:none;transition:opacity .18s ease;z-index:130}   /* 下タブ(95)より前に出す */
+.scrim.is-on{opacity:1;pointer-events:auto}
+.sheet{background:var(--card);width:100%;max-width:640px;border-radius:22px 22px 0 0;
+  padding:22px 20px 26px;transform:translateY(14px);transition:transform .18s ease}
+.scrim.is-on .sheet{transform:translateY(0)}
+.sheet h2{margin:0 0 4px;font-size:20px;font-weight:800}
+.sheet p{margin:0 0 16px;color:var(--muted);font-size:14px}
+.sheet textarea{width:100%;font:inherit;font-size:16px;padding:11px 12px;border:1px solid var(--line);
+  border-radius:12px;background:var(--paper);color:var(--ink);resize:vertical;min-height:74px;margin-bottom:14px}
+.btnrow{display:flex;flex-direction:column;gap:9px}
+.btn{appearance:none;font:inherit;font-size:16px;font-weight:700;padding:14px;border-radius:13px;
+  border:1px solid var(--line);background:var(--paper);color:var(--ink);cursor:pointer}
+.btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.btn.primary{background:var(--done);border-color:var(--done);color:#fff}
+.btn.warn{background:transparent;color:var(--rest);border-color:transparent}
+
+/* あいことばの窓。合鍵を持っていない端末では、板の読み書きの前にここで受け取る。
+   シート(130)や下タブ(95)より前に出す */
+.kagi{position:fixed;inset:0;background:rgba(58,47,38,.55);display:none;
+  align-items:center;justify-content:center;z-index:150;padding:20px}
+.kagi.is-on{display:flex}
+.kagi .card{background:var(--card);border-radius:18px;max-width:420px;width:100%;padding:24px 20px 20px}
+.kagi h2{margin:0 0 6px;font-size:19px;font-weight:800}
+.kagi p{margin:0 0 14px;color:var(--muted);font-size:14px}
+.kagi input{width:100%;font:inherit;font-size:16px;padding:12px;border:1px solid var(--line);
+  border-radius:12px;background:var(--paper);color:var(--ink);margin-bottom:10px}
+.kagi .err{display:none;color:var(--rest);font-size:13px;margin:0 0 10px}
+.kagi .err.is-on{display:block}
+/* .primary は付けない（シートの「この枠に行きます」ボタンと区別するため） */
+.kagi .btn{background:var(--done);border-color:var(--done);color:#fff}
+.btn[disabled]{opacity:.5;cursor:progress}
+
+.foot{margin-top:34px;color:var(--muted);font-size:13px;line-height:1.7}
+.foot strong{color:var(--ink)}
+.loading{color:var(--muted);padding:30px 4px}
+
+  /* ---------- アプリの下タブ ----------
+     ホーム画面から起動したときだけ出る。指の届く下端に、
+     ギャラリーとごはん板を常に置いておくためのもの。 */
+  .tabbar{display:none}
+  .app-mode .tabbar{
+    display:flex; position:fixed; left:0; right:0; bottom:0; z-index:95;
+    gap:4px; padding:6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
+    background:rgba(255,255,255,.96); backdrop-filter:blur(12px);
+    border-top:1px solid var(--line);
+  }
+  .app-mode body{padding-bottom:84px}
+  .tabbar a{
+    flex:1 1 0; min-width:0;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+    text-decoration:none; color:var(--muted);
+    font-size:11px; font-weight:700; line-height:1.2;
+    padding:7px 2px 5px; border-radius:14px; white-space:nowrap;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .tabbar a svg{width:25px; height:25px; display:block}
+  .tabbar a.is-on{color:#6B5133; background:#F3EBDD}
+  .tabbar a:active{background:#F3EBDD}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">猫倶楽部｜剛くん・ジュニアのごはん</p>
+  <a class="home-link" href="../">← 猫倶楽部のHPへ戻る</a>
+
+  <div class="banner" id="banner"></div>
+
+  <div class="hero">
+    <div class="hero-count">
+      <span class="bignum" id="heroNum">–</span>
+      <span class="hero-label" id="heroLabel">読み込み中</span>
+    </div>
+    <p class="hero-sub" id="heroSub">今日のごはんの状況を確認しています。</p>
+  </div>
+
+  <div class="namebar">
+    <label for="nameInput">お名前</label>
+    <input id="nameInput" type="text" placeholder="ニックネームでも大丈夫です" maxlength="16" autocomplete="off">
+  </div>
+
+  <div class="board-controls">
+    <div class="control-row">
+      <div class="rangebar" id="rangeBar" role="group" aria-label="表示する期間">
+        <span>期間</span>
+      </div>
+      <div class="viewbar" id="viewBar" role="group" aria-label="表示方法">
+        <span>表示</span>
+        <button type="button" data-view="list" aria-pressed="true">リスト</button>
+        <button type="button" data-view="calendar" aria-pressed="false">カレンダー</button>
+      </div>
+    </div>
+    <div class="periodbar" id="periodBar" aria-label="表示する期間の移動">
+      <button type="button" id="prevPeriod">‹ 前の期間</button>
+      <strong class="period-label" id="periodLabel">今日から</strong>
+      <button type="button" id="todayPeriod">今日</button>
+      <button type="button" id="nextPeriod">次の期間 ›</button>
+    </div>
+    <p class="period-note">過去の期間にも移動できます。古い記録は保存されている範囲だけ表示します。</p>
+    <div class="calendar-tools">
+      <button type="button" id="calendarExport" disabled>担当枠をカレンダー保存</button>
+      <p class="calendar-help" id="calendarExportStatus">担当枠が入ると、Googleカレンダー用ファイルを保存できます。</p>
+    </div>
+  </div>
+
+  <div id="board" class="loading">読み込み中…</div>
+
+  <p class="foot">
+    <strong>使い方はこれだけです。</strong><br>
+    空いている枠を押すと、あなたのお名前が入ります。行ったあとにもう一度押すと「行ってきた」に変わります。<br>
+    行けなくなったら枠を押して取り消してください。ご連絡はいりません。<br>
+    急な体調の変化など困ったことがあれば、有志のLINEグループへご連絡ください。<br><a class="foot-home" href="../">猫倶楽部のHPへ戻る</a>
+  </p>
+</div>
+
+<!-- あいことばの窓。合鍵（サーバーへの通行証）を覚えていない端末はここを通る -->
+<div class="kagi" id="kagi" role="dialog" aria-modal="true" aria-labelledby="kagiTitle" aria-hidden="true">
+  <div class="card">
+    <h2 id="kagiTitle">あいことばを入れてください</h2>
+    <p>関係者向けのページです。あいことばが分からないときは、有志のLINEグループでたずねてください。</p>
+    <input id="kagiInput" type="text" inputmode="text" autocomplete="off" placeholder="あいことば">
+    <p class="err" id="kagiErr">あいことばが違うようです。</p>
+    <div class="btnrow">
+      <button type="button" class="btn" id="kagiGo">開く</button>
+    </div>
+  </div>
+</div>
+
+<div class="scrim" id="scrim">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <h2 id="sheetTitle">枠</h2>
+    <p id="sheetSub"></p>
+    <div id="sheetBody"></div>
+    <div class="btnrow" id="sheetBtns"></div>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   ★ここだけ差し替えれば保存先を切り替えられる（画面側のコードは触らない）
+
+   mode: "auto"  … 下の判定にまかせる（開発中はこれ）
+         "gas"   … Google Apps Script を使う。url を必ず設定する
+         "memory"… 保存しない。見た目確認だけ
+
+   GAS を使う手順は gas-backend-案.gs を参照。
+   デプロイして出た「ウェブアプリのURL」を GAS_URL に貼る。
+   ===================================================================== */
+const BACKEND = {
+  mode: "auto",
+  GAS_URL: "https://script.google.com/macros/s/AKfycbzxslIEkiAwK8zaS5WmKh-0FwnhQ9i3yRjEfXU-MvM1nUVqlox6OEMqEtkbfQwBmp7tYA/exec"
+};
+
+const SLOTS = [
+  {id:"morning", label:"朝", hint:"時間は各自の都合で"},
+  // 内部IDは既存データとの互換性のため evening のままにする。
+  {id:"evening", label:"昼", hint:"時間は各自の都合で"},
+  {id:"night",   label:"夜", hint:"時間は各自の都合で"}
+];
+const DOW = ["日","月","火","水","木","金","土"];
+const CAL_DOW = ["月","火","水","木","金","土","日"];
+/* 表示する日数。既定は1週間だが、先の予定も埋めたい人のために伸ばせる。
+   選んだ期間はこの端末が覚えるので、毎回押し直さなくてよい。
+   GAS側は直近6か月相当（183日）ぶんを板に残す。先の日付に上限はない。 */
+const DAYS_KEY = "gohan-days";
+const DAYS_CHOICES = [[7,"1週間"],[14,"2週間"],[28,"1か月"]];
+const VIEW_KEY = "gohan-view";
+const VIEW_CHOICES = [["list","リスト"],["calendar","カレンダー"]];
+const START_KEY = "gohan-start";
+let DAYS = 7;
+try{
+  const v = parseInt(localStorage.getItem(DAYS_KEY), 10);
+  if(DAYS_CHOICES.some(c => c[0] === v)) DAYS = v;
+}catch(e){}
+let VIEW_MODE = "list";
+try{
+  const v = localStorage.getItem(VIEW_KEY);
+  if(VIEW_CHOICES.some(c => c[0] === v)) VIEW_MODE = v;
+}catch(e){}
+function parseDateKey(value){
+  const m = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(!m) return null;
+  const d = new Date(Number(m[1]), Number(m[2])-1, Number(m[3]));
+  if(d.getFullYear() !== Number(m[1]) || d.getMonth() !== Number(m[2])-1 || d.getDate() !== Number(m[3])) return null;
+  d.setHours(0,0,0,0);
+  return d;
+}
+let PERIOD_START = new Date();
+PERIOD_START.setHours(0,0,0,0);
+try{
+  const saved = parseDateKey(localStorage.getItem(START_KEY));
+  if(saved) PERIOD_START = saved;
+}catch(e){}
+if(VIEW_MODE === "calendar") PERIOD_START = calendarRangeStart(PERIOD_START, DAYS);
+const BOARD_KEY = "gohan-board-v1";
+const ME_KEY = "gohan-me";
+const TOKEN_KEY = "nk-gohan-k";   // 板の合鍵。あいことばを入れたときに端末へ保存される
+
+let board = {};
+let me = "";
+let busy = false;
+let kagi = "";        // 板の合鍵。GASが照合し、合わない読み書きは断られる
+
+const $ = id => document.getElementById(id);
+const ymd = d => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const esc = t => String(t).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+
+/* ---------- 保存先アダプタ ---------- */
+function resolveMode(){
+  if(BACKEND.mode !== "auto") return BACKEND.mode;
+  if(BACKEND.GAS_URL) return "gas";
+  if(typeof window.storage !== "undefined") return "claude";
+  return "local";
+}
+const MODE = resolveMode();
+
+async function loadBoard(){
+  if(MODE === "gas"){
+    const r = await fetch(BACKEND.GAS_URL + "?action=get&t=" + Date.now()
+      + "&k=" + encodeURIComponent(kagi), {method:"GET"});
+    if(!r.ok) throw new Error("読み込みに失敗しました");
+    const j = await r.json();
+    if(j.ok === false && j.error === "unauthorized") throw new Error("unauthorized");
+    return j.board || {};
+  }
+  if(MODE === "claude"){
+    try{
+      const r = await window.storage.get(BOARD_KEY, true);
+      return r ? JSON.parse(r.value) : {};
+    }catch(e){ return {}; }
+  }
+  if(MODE === "local"){
+    try{ return JSON.parse(localStorage.getItem(BOARD_KEY) || "{}"); }catch(e){ return {}; }
+  }
+  return {};
+}
+
+/* 操作を1つだけ送る。
+   ボード全体を送ると、ほぼ同時に他の人が操作したとき片方が消えてしまう。
+   サーバー側で今の状態に統合してもらい、返ってきた最新の板を受け取る。 */
+async function sendOp(op){
+  if(MODE === "gas"){
+    // Content-Type を text/plain にして CORS のプリフライトを避ける
+    const r = await fetch(BACKEND.GAS_URL, {
+      method:"POST",
+      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body: JSON.stringify(Object.assign({}, op, {token: kagi}))
+    });
+    if(!r.ok) throw new Error("保存に失敗しました");
+    const j = await r.json();
+    if(j.ok === false) throw new Error(j.error || "保存に失敗しました");
+    if(j.board) board = j.board;      // 最新の板に置き換える
+    return j;
+  }
+  // gas以外は手元だけで完結する
+  applyOpLocally(op);
+  if(MODE === "claude"){
+    await window.storage.set(BOARD_KEY, JSON.stringify(board), true);
+  }else if(MODE === "local"){
+    try{ localStorage.setItem(BOARD_KEY, JSON.stringify(board)); }catch(e){}
+  }
+  return {ok:true};
+}
+
+/* 手元モード用。GASと同じ結果になるようにする */
+function applyOpLocally(op){
+  const d = op.date, s = op.slot;
+  const cur = (board[d] || {})[s] || null;
+  if(op.action === "claim"){
+    if(cur && cur.name !== op.name) return;
+    board[d] = board[d] || {};
+    board[d][s] = {name: op.name, done:false, note:""};
+  }else if(op.action === "done"){
+    if(!cur || cur.name !== op.name) return;
+    cur.done = true; cur.note = op.note || "";
+    board[d][s] = cur;
+  }else if(op.action === "release"){
+    if(cur && cur.name === op.name){
+      delete board[d][s];
+      if(Object.keys(board[d]).length === 0) delete board[d];
+    }
+  }
+}
+
+async function loadMe(){
+  if(MODE === "claude"){
+    try{ const r = await window.storage.get(ME_KEY, false); return r ? r.value : ""; }catch(e){ return ""; }
+  }
+  try{ return localStorage.getItem(ME_KEY) || ""; }catch(e){ return ""; }
+}
+async function saveMe(v){
+  if(MODE === "claude"){
+    try{ await window.storage.set(ME_KEY, v, false); }catch(e){}
+    return;
+  }
+  try{ localStorage.setItem(ME_KEY, v); }catch(e){}
+}
+
+/* ---------- 画面 ---------- */
+function dishSVG(taken){
+  const c = taken ? "var(--done)" : "var(--open)";
+  const dash = taken ? "" : ' stroke-dasharray="5 4"';
+  const food = taken
+    ? `<circle cx="17" cy="15" r="3.1" fill="${c}"/><circle cx="24" cy="13" r="2.6" fill="${c}"/><circle cx="30" cy="15.5" r="3" fill="${c}"/><circle cx="21" cy="18" r="2.4" fill="${c}"/><circle cx="27" cy="18.5" r="2.2" fill="${c}"/>`
+    : "";
+  return `<svg class="dish" viewBox="0 0 46 34" aria-hidden="true">
+    <ellipse cx="23" cy="17" rx="15" ry="7.5" fill="none" stroke="${c}" stroke-width="2"${dash}/>
+    ${food}
+    <path d="M6 20c0 6 7.6 10 17 10s17-4 17-10" fill="none" stroke="${c}" stroke-width="2.4" stroke-linecap="round"/>
+  </svg>`;
+}
+
+const cell = (k,s) => (board[k] || {})[s] || null;
+
+function dayStart(d){
+  const out = new Date(d);
+  out.setHours(0,0,0,0);
+  return out;
+}
+function addDays(d, n){
+  const out = new Date(d);
+  out.setDate(out.getDate() + n);
+  out.setHours(0,0,0,0);
+  return out;
+}
+function startOfWeek(d){
+  const out = dayStart(d);
+  const mondayOffset = (out.getDay() + 6) % 7;
+  out.setDate(out.getDate() - mondayOffset);
+  return out;
+}
+function calendarRangeStart(d, days){
+  if(days === 28) return new Date(d.getFullYear(), d.getMonth(), 1);
+  return startOfWeek(d);
+}
+function keyDate(key){ return parseDateKey(key) || new Date(0); }
+function dateLabel(d, todayKey){
+  const key = ymd(d);
+  const diff = Math.round((keyDate(key).getTime() - keyDate(todayKey).getTime()) / 86400000);
+  if(diff === 0) return "今日";
+  if(diff === 1) return "明日";
+  if(diff === -1) return "昨日";
+  return (d.getMonth()+1) + "月" + d.getDate() + "日";
+}
+function fullDateLabel(d){
+  return (d.getMonth()+1) + "月" + d.getDate() + "日（" + DOW[d.getDay()] + "）";
+}
+function calendarPageUrl(){
+  return location.origin + location.pathname;
+}
+function calendarDateValue(d){
+  return ymd(d).replace(/-/g, "");
+}
+function calendarEndDate(dateKey){
+  return calendarDateValue(addDays(keyDate(dateKey), 1));
+}
+function calendarDetails(dateKey, slot, c){
+  return [
+    "猫倶楽部のごはん板",
+    fullDateLabel(keyDate(dateKey)) + "・" + slot.label + "（" + slot.hint + "）",
+    c ? "担当：" + c.name + (c.done ? "（対応済み）" : "") : "現在は空き枠です。",
+    c && c.note ? "メモ：" + c.note : "",
+    "板を開く：" + calendarPageUrl()
+  ].filter(function(x){ return !!x; }).join("\n");
+}
+function googleCalendarUrl(dateKey, slot, c){
+  var title = "猫倶楽部 ごはん当番（" + slot.label + "）";
+  var params = [
+    "action=TEMPLATE",
+    "text=" + encodeURIComponent(title),
+    "dates=" + calendarDateValue(keyDate(dateKey)) + "/" + calendarEndDate(dateKey),
+    "details=" + encodeURIComponent(calendarDetails(dateKey, slot, c)),
+    "location=" + encodeURIComponent("東京科学大学・猫倶楽部")
+  ];
+  return "https://calendar.google.com/calendar/render?" + params.join("&");
+}
+function icsEscape(value){
+  return String(value || "").replace(/\\/g, "\\\\").replace(/\r?\n/g, "\\n")
+    .replace(/;/g, "\\;").replace(/,/g, "\\,");
+}
+function calendarRecords(){
+  var records = [];
+  for(var i = 0; i < DAYS; i++){
+    var d = addDays(PERIOD_START, i), key = ymd(d);
+    SLOTS.forEach(function(slot){
+      var c = cell(key, slot.id);
+      if(c) records.push({dateKey:key, date:d, slot:slot, record:c});
+    });
+  }
+  return records;
+}
+function icsStamp(){
+  return new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+}
+function icsEvent(item, stamp){
+  var start = calendarDateValue(item.date), end = calendarEndDate(item.dateKey);
+  return [
+    "BEGIN:VEVENT",
+    "UID:nekoclub-gohan-" + item.dateKey + "-" + item.slot.id + "@2nyan",
+    "DTSTAMP:" + stamp,
+    "DTSTART;VALUE=DATE:" + start,
+    "DTEND;VALUE=DATE:" + end,
+    "SUMMARY:" + icsEscape("猫倶楽部 ごはん当番（" + item.slot.label + "）"),
+    "DESCRIPTION:" + icsEscape(calendarDetails(item.dateKey, item.slot, item.record)),
+    "URL:" + calendarPageUrl(),
+    "END:VEVENT"
+  ].join("\r\n");
+}
+function updateCalendarExportStatus(){
+  var count = calendarRecords().length;
+  var button = $("calendarExport"), status = $("calendarExportStatus");
+  if(!button || !status) return;
+  button.disabled = count === 0;
+  status.textContent = count
+    ? count + "枠をGoogleカレンダー用ファイルにまとめて保存できます。"
+    : "担当枠が入ると、Googleカレンダー用ファイルを保存できます。";
+}
+function exportCalendar(){
+  var records = calendarRecords();
+  if(!records.length){ banner("この期間に担当が入っている枠はありません。"); return; }
+  var stamp = icsStamp();
+  var ics = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Nekoclub//Gohan Board//JA",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH"
+  ].concat(records.map(function(item){ return icsEvent(item, stamp); })).concat(["END:VCALENDAR"])
+    .join("\r\n") + "\r\n";
+  var blob = new Blob([ics], {type:"text/calendar;charset=utf-8"});
+  var url = URL.createObjectURL(blob), a = document.createElement("a");
+  var end = addDays(PERIOD_START, DAYS - 1);
+  a.href = url;
+  a.download = "nekoclub-gohan-" + ymd(PERIOD_START) + "-" + ymd(end) + ".ics";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  banner(records.length + "枠をカレンダー用ファイルに保存しました。Googleカレンダーからインポートできます。");
+}
+function appendCalendarLink(parent, dateKey, slot, c){
+  var p = document.createElement("p");
+  p.className = "calendar-link-wrap";
+  var a = document.createElement("a");
+  a.href = googleCalendarUrl(dateKey, slot, c);
+  a.target = "_blank";
+  a.rel = "noopener";
+  a.textContent = "Googleカレンダーにこの枠を追加（終日）";
+  p.appendChild(a);
+  parent.appendChild(p);
+}
+function formatPeriodDate(d){
+  return (d.getMonth()+1) + "月" + d.getDate() + "日";
+}
+function dateIsBeforeToday(key, todayKey){ return key < todayKey; }
+function slotIsPast(key, slotId, now){
+  // 時刻は人によって異なるため、当日は3区分すべて受付対象にする。
+  const today = dayStart(now);
+  const d = keyDate(key);
+  return d.getTime() < today.getTime();
+}
+function periodLabelText(){
+  if(VIEW_MODE === "calendar" && DAYS === 28){
+    return PERIOD_START.getFullYear() + "年" + (PERIOD_START.getMonth()+1) + "月";
+  }
+  const end = addDays(PERIOD_START, DAYS - 1);
+  return formatPeriodDate(PERIOD_START) + "〜" + formatPeriodDate(end);
+}
+function renderPeriodLabel(){
+  const label = $("periodLabel");
+  if(label) label.textContent = periodLabelText();
+}
+function buildSlotButton(parent, dateKey, slot, dayLabel, compact, now){
+  const c = cell(dateKey, slot.id);
+  const past = slotIsPast(dateKey, slot.id, now);
+  const b = document.createElement("button");
+  b.type = "button";
+  b.dataset.d = dateKey;
+  b.dataset.s = slot.id;
+  b.className = (compact ? "calendar-slot " : "slot ")
+    + (c ? "is-taken" : "is-open")
+    + (c && me && c.name === me ? " is-mine" : "")
+    + (past && !c ? " is-past" : "");
+  if(past && !c) b.disabled = true;
+  const shownName = c ? (c.done ? "✓ " : "") + esc(c.name) : (compact ? "空き" : "空いています");
+  if(compact){
+    b.innerHTML = '<span class="calendar-slot-label">' + slot.label + '</span>'
+      + '<span class="calendar-slot-who">' + shownName + '</span>';
+  }else{
+    b.innerHTML = dishSVG(!!c)
+      + '<span class="time">' + slot.label + '</span>'
+      + '<span class="who">' + shownName + '</span>';
+  }
+  b.setAttribute("aria-label", dayLabel + " " + slot.label + " " + slot.hint + " "
+    + (c ? c.name + "さん" + (c.done ? "・対応済み" : "") : (past ? "過去の空き枠" : "空き")));
+  b.addEventListener("click", function(){ openSheet(dateKey, slot, dayLabel); });
+  parent.appendChild(b);
+}
+function renderList(root, today){
+  const todayKey = ymd(today);
+  const now = new Date();
+  for(let i=0;i<DAYS;i++){
+    const d = addDays(PERIOD_START, i);
+    const key = ymd(d), dow = d.getDay(), rest = dow===0 || dow===6;
+    const label = dateLabel(d, todayKey);
+    const day = document.createElement("section");
+    day.className = "day" + (key === todayKey ? " is-today" : "");
+    const head = document.createElement("div");
+    head.className = "day-head";
+    head.innerHTML = '<span class="day-date">' + label + '</span>'
+      + '<span class="day-dow' + (rest ? " is-rest" : "") + '">' + DOW[dow] + '曜</span>';
+    if(SLOTS.every(function(s){ return !cell(key, s.id); })){
+      const tag = document.createElement("span");
+      const historic = dateIsBeforeToday(key, todayKey);
+      tag.className = "day-tag" + (historic ? " is-history" : "");
+      tag.textContent = historic ? "記録なし" : "まるごと空き";
+      head.appendChild(tag);
+    }
+    day.appendChild(head);
+    const slots = document.createElement("div");
+    slots.className = "slots";
+    SLOTS.forEach(function(s){ buildSlotButton(slots, key, s, fullDateLabel(d), false, now); });
+    day.appendChild(slots);
+    SLOTS.forEach(function(s){
+      const c = cell(key, s.id);
+      if(c && c.note){
+        const n = document.createElement("p");
+        n.className = "note";
+        n.textContent = s.label + "：" + c.note;
+        day.appendChild(n);
+      }
+    });
+    root.appendChild(day);
+  }
+}
+function renderCalendar(root, today){
+  const isMonth = DAYS === 28;
+  const month = new Date(PERIOD_START.getFullYear(), PERIOD_START.getMonth(), 1);
+  const first = isMonth ? new Date(month) : new Date(PERIOD_START);
+  if(isMonth) first.setDate(1 - ((month.getDay() + 6) % 7));
+  const total = isMonth ? 42 : DAYS;
+  const todayKey = ymd(today);
+  const now = new Date();
+  const cal = document.createElement("div");
+  cal.className = "calendar " + (isMonth ? "calendar-month" : "calendar-range");
+  CAL_DOW.forEach(function(name, i){
+    const head = document.createElement("div");
+    head.className = "calendar-weekday" + ((i===5 || i===6) ? " is-rest" : "");
+    head.textContent = name;
+    cal.appendChild(head);
+  });
+  for(let i=0;i<total;i++){
+    const d = addDays(first, i);
+    const key = ymd(d), rest = d.getDay()===0 || d.getDay()===6;
+    const inMonth = !isMonth || (d.getMonth() === month.getMonth() && d.getFullYear() === month.getFullYear());
+    const day = document.createElement("section");
+    day.className = "calendar-cell"
+      + (isMonth && !inMonth ? " is-other-month" : "")
+      + (key === todayKey ? " is-today" : "");
+    day.setAttribute("aria-label", fullDateLabel(d));
+    const head = document.createElement("div");
+    head.className = "calendar-cell-head";
+    head.innerHTML = '<span class="calendar-date">' + d.getDate() + '</span>'
+      + '<span class="calendar-cell-dow' + (rest ? " is-rest" : "") + '">' + DOW[d.getDay()] + '</span>';
+    day.appendChild(head);
+    const slots = document.createElement("div");
+    slots.className = "calendar-slots";
+    SLOTS.forEach(function(s){ buildSlotButton(slots, key, s, fullDateLabel(d), true, now); });
+    day.appendChild(slots);
+    const noted = SLOTS.filter(function(s){ const c = cell(key, s.id); return c && c.note; });
+    if(noted.length){
+      const note = document.createElement("span");
+      note.className = "calendar-note";
+      note.textContent = "メモあり";
+      day.appendChild(note);
+    }
+    cal.appendChild(day);
+  }
+  root.appendChild(cal);
+}
+function render(){
+  const today = dayStart(new Date());
+  const todayKey = ymd(today);
+  const openToday = SLOTS.filter(s => !cell(todayKey, s.id));
+  const num = $("heroNum"), label = $("heroLabel"), sub = $("heroSub");
+  if(openToday.length){
+    num.textContent = openToday.length;
+    num.className = "bignum is-open";
+    label.textContent = "枠、まだ誰も行っていません";
+    sub.textContent = "今日行ける方は、下の空いている皿を押してください。";
+  }else{
+    num.textContent = "0";
+    num.className = "bignum is-clear";
+    label.textContent = "今日はぜんぶ埋まりました";
+    sub.textContent = "ありがとうございます。先の日付ものぞいてみてください。";
+  }
+  const root = $("board");
+  root.className = VIEW_MODE === "calendar" ? "calendar-board" : "list-board";
+  root.innerHTML = "";
+  if(VIEW_MODE === "calendar") renderCalendar(root, today);
+  else renderList(root, today);
+  renderPeriodLabel();
+  updateCalendarExportStatus();
+}
+
+/* 自分の枠の印だけ付け直す。
+   名前を変えるたびに render() でボードを作り直すと、
+   入力欄からフォーカスが外れた瞬間にボタンが差し替わり、
+   そのとき押していた1回目のタップが無視されてしまう。 */
+function markMine(){
+  document.querySelectorAll(".slot, .calendar-slot").forEach(function(b){
+    const c = cell(b.dataset.d, b.dataset.s);
+    b.classList.toggle("is-mine", !!(c && me && c.name === me));
+  });
+}
+
+/* ---------- 操作 ---------- */
+async function commit(op, optimistic){
+  if(busy) return;
+  busy = true;
+  const snapshot = JSON.stringify(board);
+  try{
+    optimistic();          // 先に画面へ反映して、待たされている感じを減らす
+    render(); closeSheet();
+    const res = await sendOp(op);
+    render();
+    if(res && res.conflict){
+      banner("ほかの方が先にこの枠を操作していました。最新の状態にしてあります。");
+    }
+  }catch(e){
+    board = JSON.parse(snapshot);
+    render();
+    if(String(e && e.message) === "unauthorized"){
+      dropKagi();   // 合鍵が古い（差し替え後など）。あいことばを入れ直してもらう
+    }else{
+      alert("保存できませんでした。通信を確かめて、もう一度お試しください。");
+    }
+  }finally{ busy = false; }
+}
+
+function banner(msg){
+  const b = $("banner");
+  b.className = "banner is-on";
+  b.textContent = msg;
+  clearTimeout(banner._t);
+  banner._t = setTimeout(function(){ b.className = "banner"; }, 6000);
+}
+
+function openSheet(dateKey, slot, dayLabel){
+  const c = cell(dateKey, slot.id);
+  const oldDate = dateIsBeforeToday(dateKey, ymd(dayStart(new Date())));
+  const slotPast = slotIsPast(dateKey, slot.id, new Date());
+  $("sheetTitle").textContent = dayLabel + "の" + slot.label;
+  $("sheetSub").textContent = slot.hint;
+  const body = $("sheetBody"), btns = $("sheetBtns");
+  body.innerHTML = ""; btns.innerHTML = "";
+
+  if(oldDate){
+    $("sheetSub").textContent = c ? c.name + "さん・" + slot.hint + "（過去の記録）" : slot.hint + "（過去の記録）";
+    if(c){
+      body.innerHTML = '<p style="margin:0 0 14px;color:var(--ink)">'
+        + (c.done ? "対応済みです。" : "この枠に入っていました。") + '</p>';
+      if(c.note) body.innerHTML += '<p style="margin:0 0 14px;color:var(--ink)">' + esc(c.note) + '</p>';
+    }else{
+      body.innerHTML = '<p style="margin:0 0 14px;color:var(--muted)">この枠の過去記録はありません。</p>';
+    }
+    addBtn(btns, "閉じる", "", closeSheet);
+    $("scrim").classList.add("is-on");
+    return;
+  }
+  if(!c && slotPast){
+    $("sheetSub").textContent = slot.hint + "（受付時間を過ぎています）";
+    body.innerHTML = '<p style="margin:0 0 14px;color:var(--muted)">本日の受付時間を過ぎた空き枠です。新しく登録することはできません。</p>';
+  }else if(!c){
+    addBtn(btns, "この枠に行きます", "primary", async function(){
+      const name = ($("nameInput").value || "").trim();
+      if(!name){ closeSheet(); alert("先にお名前を入れてください。"); $("nameInput").focus(); return; }
+      me = name; await saveMe(name);
+      commit({action:"claim", date:dateKey, slot:slot.id, name:name}, function(){
+        board[dateKey] = board[dateKey] || {};
+        board[dateKey][slot.id] = {name:name,done:false,note:""};
+      });
+    });
+  }else if(me && c.name === me){
+    const ph = c.done ? "ひとことメモ（任意）" : "ひとことメモ（任意）　例：2匹とも完食。皿は片づけました。";
+    body.innerHTML = '<textarea id="noteInput" placeholder="' + ph + '">' + esc(c.note || "") + '</textarea>';
+    addBtn(btns, c.done ? "メモを保存する" : "行ってきました", "primary", function(){
+      const note = ($("noteInput").value || "").trim();
+      commit({action:"done", date:dateKey, slot:slot.id, name:me, note:note}, function(){
+        board[dateKey][slot.id].done = true;
+        board[dateKey][slot.id].note = note;
+      });
+    });
+    addBtn(btns, "この枠を取り消す", "warn", function(){
+      commit({action:"release", date:dateKey, slot:slot.id, name:me}, function(){
+        delete board[dateKey][slot.id];
+        if(Object.keys(board[dateKey]).length === 0) delete board[dateKey];
+      });
+    });
+  }else{
+    $("sheetSub").textContent = c.name + "さんが入っています。" + (c.done ? "対応済みです。" : "");
+    if(c.note) body.innerHTML = '<p style="margin:0 0 14px;color:var(--ink)">' + esc(c.note) + '</p>';
+  }
+  if(!oldDate && (!slotPast || c)) appendCalendarLink(body, dateKey, slot, c);
+  addBtn(btns, "閉じる", "", closeSheet);
+  $("scrim").classList.add("is-on");
+}
+
+function addBtn(parent, text, kind, fn){
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "btn" + (kind ? " " + kind : "");
+  b.textContent = text;
+  b.addEventListener("click", fn);
+  parent.appendChild(b);
+}
+function closeSheet(){ $("scrim").classList.remove("is-on"); }
+
+$("scrim").addEventListener("click", e => { if(e.target === $("scrim")) closeSheet(); });
+document.addEventListener("keydown", e => { if(e.key === "Escape") closeSheet(); });
+$("nameInput").addEventListener("input", e => {
+  me = e.target.value.trim();
+  markMine();
+});
+$("nameInput").addEventListener("change", async e => {
+  me = e.target.value.trim();
+  await saveMe(me);
+  markMine();
+});
+
+/* ---------- あいことばの窓（合鍵の受け取り） ----------
+   トップ・アルバムのゲートと同じ暗号ブロック。あいことばで復号すると
+   {"p":"行き先","k":"板の合鍵"} が出てくる。ここでは k だけを使う。
+   GAS は合鍵の合わない読み書きを断るので、URLを知っているだけでは
+   板は読めず、書き換えられない。あいことばの位置づけ（仕切り）は変えていない。 */
+const GATE = {
+  salt: "cipSVTudEZpr5pum8EmxNA==",
+  iv:   "D9K7SFY/NlQGnlLs",
+  data: "LRy6o6ikteJJwBo7QfMT3TCzXmduYqReCnecv5Cdwm0iRbgCDyOwI77X5KDA3Yw/iYTvxr4bL0aqS6DjxJvajLR/CyKTfWz/IeLzUMsT8DmuB2URUg=="
+};
+function b64d(x){ return Uint8Array.from(atob(x), c => c.charCodeAt(0)); }
+async function gateTry(pw){
+  const enc = new TextEncoder();
+  const km = await crypto.subtle.importKey("raw", enc.encode(pw), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey(
+    {name:"PBKDF2", salt:b64d(GATE.salt), iterations:150000, hash:"SHA-256"},
+    km, {name:"AES-GCM", length:256}, false, ["decrypt"]);
+  const pt = await crypto.subtle.decrypt({name:"AES-GCM", iv:b64d(GATE.iv)}, key, b64d(GATE.data));
+  return new TextDecoder().decode(pt);
+}
+function loadKagi(){ try{ return localStorage.getItem(TOKEN_KEY) || ""; }catch(e){ return ""; } }
+function kagiOpen(){
+  const k = $("kagi");
+  k.classList.add("is-on"); k.setAttribute("aria-hidden","false");
+  setTimeout(() => $("kagiInput").focus(), 60);
+}
+function kagiClose(){
+  const k = $("kagi");
+  k.classList.remove("is-on"); k.setAttribute("aria-hidden","true");
+}
+/* 合鍵が通らなかったとき（差し替え後の古い合鍵など）に呼ぶ */
+function dropKagi(){
+  kagi = "";
+  try{ localStorage.removeItem(TOKEN_KEY); }catch(e){}
+  $("board").className = "loading";
+  $("board").textContent = "あいことばを入れると表示されます。";
+  kagiOpen();
+}
+async function kagiGo(){
+  const pw = ($("kagiInput").value || "").trim();
+  if(!pw){ $("kagiInput").focus(); return; }
+  try{
+    const got = JSON.parse(await gateTry(pw));
+    kagi = got.k;
+    try{
+      localStorage.setItem(TOKEN_KEY, got.k);
+      localStorage.setItem("nk-gohan", got.p);   // 行き先も揃えて覚え直す
+    }catch(e){}
+    $("kagiErr").classList.remove("is-on");
+    $("kagiInput").value = "";
+    kagiClose();
+    await start();
+  }catch(err){
+    $("kagiErr").classList.add("is-on");
+    $("kagiInput").select();
+  }
+}
+$("kagiGo").addEventListener("click", kagiGo);
+$("kagiInput").addEventListener("keydown", e => { if(e.key === "Enter") kagiGo(); });
+
+/* ---------- 期間・表示方法・移動 ---------- */
+function savePeriod(){
+  try{ localStorage.setItem(START_KEY, ymd(PERIOD_START)); }catch(e){}
+}
+function syncRangeButtons(){
+  document.querySelectorAll("#rangeBar button").forEach(function(button){
+    const on = Number(button.dataset.days) === DAYS;
+    button.classList.toggle("on", on);
+    button.setAttribute("aria-pressed", on ? "true" : "false");
+  });
+}
+function syncViewButtons(){
+  document.querySelectorAll("#viewBar button[data-view]").forEach(function(button){
+    const on = button.dataset.view === VIEW_MODE;
+    button.classList.toggle("on", on);
+    button.setAttribute("aria-pressed", on ? "true" : "false");
+  });
+}
+function buildRangeBar(){
+  const bar = $("rangeBar");
+  if(!bar) return;
+  DAYS_CHOICES.forEach(function(choice){
+    const n = choice[0], label = choice[1];
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = label;
+    b.dataset.days = n;
+    b.addEventListener("click", function(){
+      if(DAYS === n && !(n === 28 && VIEW_MODE !== "calendar")) return;
+      DAYS = n;
+      try{ localStorage.setItem(DAYS_KEY, String(n)); }catch(e){}
+      if(n === 28 && VIEW_MODE !== "calendar"){
+        VIEW_MODE = "calendar";
+        try{ localStorage.setItem(VIEW_KEY, VIEW_MODE); }catch(e){}
+        syncViewButtons();
+      }
+      if(VIEW_MODE === "calendar"){
+        PERIOD_START = calendarRangeStart(PERIOD_START, DAYS);
+        savePeriod();
+      }
+      syncRangeButtons();
+      render();
+    });
+    bar.appendChild(b);
+  });
+  syncRangeButtons();
+}
+function buildViewBar(){
+  const bar = $("viewBar");
+  if(!bar) return;
+  bar.querySelectorAll("button[data-view]").forEach(function(button){
+    button.addEventListener("click", function(){
+      const next = button.dataset.view;
+      if(next === VIEW_MODE) return;
+      VIEW_MODE = next;
+      if(VIEW_MODE === "calendar"){
+        PERIOD_START = calendarRangeStart(PERIOD_START, DAYS);
+      }
+      try{ localStorage.setItem(VIEW_KEY, VIEW_MODE); }catch(e){}
+      savePeriod();
+      syncViewButtons();
+      render();
+    });
+  });
+  syncViewButtons();
+}
+function buildPeriodBar(){
+  $("prevPeriod").addEventListener("click", function(){ movePeriod(-1); });
+  $("todayPeriod").addEventListener("click", function(){
+    PERIOD_START = VIEW_MODE === "calendar"
+      ? calendarRangeStart(dayStart(new Date()), DAYS)
+      : dayStart(new Date());
+    savePeriod();
+    render();
+  });
+  $("nextPeriod").addEventListener("click", function(){ movePeriod(1); });
+}
+function movePeriod(direction){
+  if(VIEW_MODE === "calendar" && DAYS === 28){
+    PERIOD_START = new Date(PERIOD_START.getFullYear(), PERIOD_START.getMonth()+direction, 1);
+  }else{
+    PERIOD_START = addDays(PERIOD_START, DAYS * direction);
+  }
+  savePeriod();
+  render();
+}
+buildRangeBar();
+buildViewBar();
+buildPeriodBar();
+$("calendarExport").addEventListener("click", exportCalendar);
+
+/* ---------- 起動 ---------- */
+async function start(){
+  me = await loadMe();
+  $("nameInput").value = me;
+  try{ board = await loadBoard(); }
+  catch(e){
+    if(String(e && e.message) === "unauthorized"){ board = {}; render(); dropKagi(); return; }
+    const b = $("banner");
+    b.className = "banner is-on";
+    b.textContent = "今の状況を読み込めませんでした。通信を確かめて、ページを開き直してください。";
+    board = {};
+  }
+  render();
+}
+
+(async function init(){
+  if(MODE === "memory"){
+    const b = $("banner");
+    b.className = "banner is-on";
+    b.textContent = "保存先が未設定のため、この画面での入力は保存されません。見た目の確認用です。";
+  }
+  if(MODE === "local"){
+    const b = $("banner");
+    b.className = "banner is-on";
+    b.textContent = "デモ版です。入力はこの端末の中にだけ保存され、ほかの方とはまだ共有されません（みんなで使える共有保存は準備中です）。";
+  }
+  kagi = loadKagi();
+  if(MODE === "gas" && !kagi){
+    // 合鍵を持っていない端末（初めて・別ブラウザ・合鍵の差し替え後）。
+    // あいことばを受け取ってから読み込む。
+    $("board").className = "loading";
+    $("board").textContent = "あいことばを入れると表示されます。";
+    kagiOpen();
+  }else{
+    await start();
+  }
+  // 他の人の書き込みを拾う
+  setInterval(async () => {
+    if(busy || MODE !== "gas" || !kagi) return;
+    try{ board = await loadBoard(); render(); }
+    catch(e){ if(String(e && e.message) === "unauthorized") dropKagi(); }
+  }, 30000);
+})();
+</script>
+<!-- アプリ（ホーム画面から起動）のときだけ出る下タブ -->
+<nav class="tabbar" aria-label="メニュー">
+  <a href="../album.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.6" y="4.6" width="18.8" height="14.8" rx="3.2"/><path d="M4.2 17.4 L9 11.4 L12.8 15.2 L15.8 12.6 L19.8 17.4"/><circle cx="16.2" cy="9" r="1.3"/></svg><span>ギャラリー</span></a>
+  <a href="./" class="is-on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.8 11.8 Q12 9.6 21.2 11.8 Q19.6 19.4 12 19.4 Q4.4 19.4 2.8 11.8 Z"/><path d="M4.2 12.6 Q12 15.6 19.8 12.6"/><path d="M9 7.4 Q7.5 5.8 9 4.2"/><path d="M15 7.4 Q16.5 5.8 15 4.2"/></svg><span>ごはん板</span></a>
+  <a href="../index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.6 8.6 Q3.1 2.8 7.6 4.6 L9.6 6.1 Q12 5.2 14.4 6.1 L16.4 4.6 Q20.9 2.8 19.4 8.6 Q21.4 13.4 17.4 16.4 Q12 19.3 6.6 16.4 Q2.6 13.4 4.6 8.6 Z"/><circle cx="9.2" cy="11.2" r="0.85" fill="currentColor" stroke="none"/><circle cx="14.8" cy="11.2" r="0.85" fill="currentColor" stroke="none"/><path d="M10.6 13.6 Q12 15 13.4 13.6"/></svg><span>活動について</span></a>
+</nav>
+</body>
+</html>
