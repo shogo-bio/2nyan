@@ -1,0 +1,75 @@
+# ============================================================
+# 公開中の写真を、写真受付GASの公開フィードから img/photos/ と photos.json へ写す（ミラー）。
+#
+# このファイルは作業用リポジトリ shogo-bio/2nyan-src の public/.github/workflows/ にあり、
+# 「公開リポジトリへ反映」のたびに公開リポジトリ shogo-bio/2nyan へコピーされる。
+# 公開リポジトリ側で直しても、次の反映で上書きされる。
+#
+# 【この定期実行は当てにしないこと】2026-09-07 に、10分おき（*/10）で5時間、
+# 毎時（5 * * * *）で2枠ぶん待っても、一度も動かなかった。ワークフローは有効で中身も正しい。
+# 公開リポジトリの中身は「公開リポジトリへ反映」が deploy key で毎回まるごと置き換えており、
+# コミットの主が実在のGitHubユーザーでないため、定期実行の実行者を決められないのだと見ている。
+# 定義は残してあるので、GitHub側の都合で動き出せばそのぶん新しくなる。
+#
+# 実際にミラーを回しているのは次の2つ:
+#   - 作業用リポジトリの「公開リポジトリへ反映」（web/ か public/ を直したとき＋毎日 06:20 JST）
+#   - この画面の Run workflow（すぐ反映したいとき。手で押す）
+# 新しい写真はアルバムが写真受付GASから直接読んで先に出るので、ここが遅れても写真は出る
+# （ここが作るのは「速く出すための静的な写し」）。
+# 変化が無ければ何もしない。変化があれば履歴を1コミットに置き換える
+# （取り下げた写真を履歴から辿れないようにするため。「公開リポジトリへ反映」と同じ考え方）。
+#
+# 注意: 公開リポジトリで60日間まったく更新が無いと、GitHub が定期実行を止める。
+#       止まったら Actions 画面の「写真のミラー」で Enable workflow を押す。
+# ============================================================
+name: 写真のミラー
+
+on:
+  schedule:
+    - cron: '5 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: mirror-photos
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 画像の変換に使うものを入れる
+        run: pip install --quiet pillow
+
+      - name: 公開中の写真を写す
+        run: |
+          set -eu
+          # 1回で取り込む上限があるので、増えなくなるまで何度か回す（旧178枚の取り込みなど）
+          for i in 1 2 3 4 5 6; do
+            python3 scripts/mirror_photos.py --limit 40 | tee /tmp/mirror.log
+            grep -q '変化なし' /tmp/mirror.log && break
+          done
+
+      - name: 変化があれば1コミットに置き換える
+        run: |
+          set -eu
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "変化なし"
+            exit 0
+          fi
+          git config user.name  "2nyan-mirror"
+          git config user.email "2nyan-mirror@users.noreply.github.com"
+          git checkout -q --orphan mirror-tmp
+          git add -A
+          git commit -q -m "猫倶楽部 支援ページ（$(date -u -d '+9 hours' +%Y-%m-%d\ %H:%M) 写真のミラー）"
+          git push --force origin HEAD:main
