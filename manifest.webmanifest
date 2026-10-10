@@ -1,0 +1,26 @@
+{
+  "name": "猫倶楽部｜東京科学大学 横浜キャンパス",
+  "short_name": "猫倶楽部",
+  "description": "東京科学大学 横浜キャンパスの猫たちを見守る有志の集まりです。",
+  "lang": "ja",
+  "start_url": "album.html",
+  "scope": "./",
+  "id": "./",
+  "display": "standalone",
+  "background_color": "#FBF7F0",
+  "theme_color": "#FBF7F0",
+  "icons": [
+    { "src": "icons/icon-192.png",      "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png",      "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "活動について",
+      "short_name": "活動",
+      "description": "猫倶楽部の活動と支援のお願い",
+      "url": "index.html",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ]
+}
